@@ -4,6 +4,7 @@ pub struct Framebuffer {
     pub width: usize,
     pub height: usize,
     pub buffer: Vec<Color>,
+    pub zbuffer: Vec<f32>, // Asegúrate de incluir el Z-buffer
     pub background_color: Color,
     pub current_color: Color,
 }
@@ -11,8 +12,10 @@ pub struct Framebuffer {
 impl Framebuffer {
     pub fn new(width: usize, height: usize) -> Self {
         let buffer = vec![Color::new(0, 0, 0); width * height];
+        let zbuffer = vec![f32::INFINITY; width * height]; // Z-buffer inicializado en infinito
         Self {
             buffer,
+            zbuffer, // Inicializa el Z-buffer
             width,
             height,
             background_color: Color::new(0, 0, 0),
@@ -20,9 +23,13 @@ impl Framebuffer {
         }
     }
 
-    pub fn point(&mut self, x: usize, y: usize) {
+    pub fn point(&mut self, x: usize, y: usize, depth: f32) {
         if x < self.width && y < self.height {
-            self.buffer[y * self.width + x] = self.current_color;
+            let index = y * self.width + x;
+            if depth < self.zbuffer[index] {
+                self.buffer[index] = self.current_color;
+                self.zbuffer[index] = depth; // Actualiza el Z-buffer
+            }
         }
     }
 
@@ -58,6 +65,9 @@ impl Framebuffer {
     pub fn clear(&mut self) {
         for pixel in &mut self.buffer {
             *pixel = self.background_color.clone();
+        }
+        for depth in &mut self.zbuffer {
+            *depth = f32::INFINITY; // Restablecer el Z-buffer
         }
     }
 
