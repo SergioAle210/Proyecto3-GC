@@ -1,5 +1,6 @@
 use crate::color::Color;
 use crate::fragment::Fragment;
+use crate::framebuffer::Framebuffer;
 use crate::line::line;
 use crate::vertex::Vertex;
 use nalgebra_glm::{dot, Vec3};
@@ -15,8 +16,7 @@ pub fn _triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
     fragments
 }
 
-pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
-    let mut fragments = Vec::new();
+pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, framebuffer: &mut Framebuffer) {
     let (a, b, c) = (
         v1.transformed_position,
         v2.transformed_position,
@@ -32,35 +32,41 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
     // Iterate over each pixel in the bounding box
     for y in min_y..=max_y {
         for x in min_x..=max_x {
-            let point = Vec3::new(x as f32 + 0.5, y as f32 + 0.5, 0.0);
+            // Verificar que x e y estén dentro de los límites del framebuffer
+            if x >= 0 && x < framebuffer.width as i32 && y >= 0 && y < framebuffer.height as i32 {
+                let point = Vec3::new(x as f32 + 0.5, y as f32 + 0.5, 0.0);
 
-            // Calculate barycentric coordinates
-            let (w1, w2, w3) = barycentric_coordinates(&point, &a, &b, &c, triangle_area);
+                // Calculate barycentric coordinates
+                let (w1, w2, w3) = barycentric_coordinates(&point, &a, &b, &c, triangle_area);
 
-            // Check if the point is inside the triangle
-            if w1 >= 0.0 && w1 <= 1.0 && w2 >= 0.0 && w2 <= 1.0 && w3 >= 0.0 && w3 <= 1.0 {
-                // Interpolate normal
-                // let normal = v1.transformed_normal * w1 + v2.transformed_normal * w2 + v3.transformed_normal * w3;
-                let normal = v1.transformed_normal;
-                let normal = normal.normalize();
+                // Check if the point is inside the triangle
+                if w1 >= 0.0 && w1 <= 1.0 && w2 >= 0.0 && w2 <= 1.0 && w3 >= 0.0 && w3 <= 1.0 {
+                    // Interpolate normal
+                    let normal = v1.transformed_normal;
+                    let normal = normal.normalize();
 
-                // Calculate lighting intensity
-                let intensity = dot(&normal, &light_dir).max(0.0);
+                    // Calculate lighting intensity
+                    let intensity = dot(&normal, &light_dir).max(0.0);
 
-                // Create a gray color and apply lighting
-                let base_color = Color::new(100, 100, 100); // Medium gray
-                let lit_color = base_color * intensity;
+                    // Create a gray color and apply lighting
+                    let base_color = Color::new(100, 100, 100); // Medium gray
+                    let lit_color = base_color * intensity;
 
-                // Interpolate depth
-                // let depth = a.z * w1 + b.z * w2 + c.z * w3;
-                let depth = a.z;
+                    // Interpolate depth
+                    let depth = w1 * a.z + w2 * b.z + w3 * c.z;
 
-                fragments.push(Fragment::new(x as f32, y as f32, lit_color, depth));
+                    // Calcula el índice en el framebuffer
+                    let index = y as usize * framebuffer.width + x as usize;
+
+                    // Comparar con el valor del Z-buffer y actualizar si es necesario
+                    if depth < framebuffer.zbuffer[index] {
+                        framebuffer.zbuffer[index] = depth;
+                        framebuffer.point_with_color(x as usize, y as usize, lit_color);
+                    }
+                }
             }
         }
     }
-
-    fragments
 }
 
 fn calculate_bounding_box(v1: &Vec3, v2: &Vec3, v3: &Vec3) -> (i32, i32, i32, i32) {
