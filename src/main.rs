@@ -23,49 +23,31 @@ pub struct Uniforms {
 }
 
 fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
-    // Crear la matriz de transformación de escala
     let scale_matrix = nalgebra_glm::scaling(&Vec3::new(scale, scale, scale));
-
-    // Crear la matriz de rotación (aplicando rotaciones alrededor de los 3 ejes)
     let rotation_matrix = nalgebra_glm::rotation(rotation.x, &Vec3::x_axis())
         * nalgebra_glm::rotation(rotation.y, &Vec3::y_axis())
         * nalgebra_glm::rotation(rotation.z, &Vec3::z_axis());
-
-    // Crear la matriz de traslación
     let translation_matrix = nalgebra_glm::translation(&translation);
-
-    // Combinarlas todas en una sola matriz de modelo
     translation_matrix * rotation_matrix * scale_matrix
 }
 
 fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex]) {
-    // Vertex Shader Stage
+    // Vertex Shader Stage: Transformación de los vértices usando los uniforms (matriz de modelo)
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
-        // Transformación de vértices
-        let transformed = vertex_shader(vertex, uniforms);
+        let transformed = vertex_shader(vertex, uniforms); // Aplicar transformaciones
         transformed_vertices.push(transformed);
     }
 
-    // Ensamblar triángulos de vértices transformados
+    // Ensamblar triángulos de los vértices transformados y rasterizarlos
     for i in (0..transformed_vertices.len()).step_by(3) {
         if i + 2 < transformed_vertices.len() {
-            // Obtener los vértices de cada triángulo
             let v1 = &transformed_vertices[i];
             let v2 = &transformed_vertices[i + 1];
             let v3 = &transformed_vertices[i + 2];
 
-            // Rasterizar el triángulo directamente
-            let fragments = triangle(v1, v2, v3);
-
-            // Procesar los fragmentos y renderizarlos
-            for fragment in fragments {
-                let x = fragment.position.x as usize;
-                let y = fragment.position.y as usize;
-                if x < framebuffer.width && y < framebuffer.height {
-                    framebuffer.point_with_color(x, y, fragment.color);
-                }
-            }
+            // Llamada a la función triangle para calcular los fragmentos y aplicar el Z-buffer
+            triangle(v1, v2, v3, framebuffer);
         }
     }
 }
@@ -77,7 +59,9 @@ fn main() {
     let framebuffer_height = 600;
     let frame_delay = Duration::from_millis(16);
 
+    // Crear el framebuffer
     let mut framebuffer = Framebuffer::new(framebuffer_width, framebuffer_height);
+
     let mut window = Window::new(
         "Rust Graphics - Renderer Example",
         window_width,
@@ -93,9 +77,9 @@ fn main() {
 
     let mut translation = Vec3::new(300.0, 200.0, 0.0);
     let mut rotation = Vec3::new(0.0, 0.0, 0.0);
-    let mut scale = 100.0f32;
+    let mut scale = 20.0f32;
 
-    let obj = Obj::load("assets/models/dragon.obj").expect("Failed to load obj");
+    let obj = Obj::load("assets/models/dragon_suavized.obj").expect("Failed to load obj");
     let vertex_arrays = obj.get_vertex_array();
 
     while window.is_open() {
@@ -103,7 +87,7 @@ fn main() {
             break;
         }
 
-        // Donde esta mi modelo, solo me deja mover un modelo
+        // Manejar la entrada de usuario
         handle_input(&window, &mut translation, &mut rotation, &mut scale);
 
         framebuffer.clear();
