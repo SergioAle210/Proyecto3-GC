@@ -16,13 +16,7 @@ pub fn _triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex) -> Vec<Fragment> {
     fragments
 }
 
-pub fn triangle(
-    v1: &Vertex,
-    v2: &Vertex,
-    v3: &Vertex,
-    framebuffer: &mut Framebuffer,
-    light_dir: Vec3,
-) {
+pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, framebuffer: &mut Framebuffer) {
     let (a, b, c) = (
         v1.transformed_position,
         v2.transformed_position,
@@ -32,6 +26,7 @@ pub fn triangle(
     let (min_x, min_y, max_x, max_y) = calculate_bounding_box(&a, &b, &c);
 
     let triangle_area = edge_function(&a, &b, &c);
+    let light_dir = Vec3::new(0.0, 0.0, -1.0);
 
     // Iterate over each pixel in the bounding box
     for y in min_y..=max_y {
