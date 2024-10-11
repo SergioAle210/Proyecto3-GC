@@ -26,7 +26,7 @@ pub fn triangle(v1: &Vertex, v2: &Vertex, v3: &Vertex, framebuffer: &mut Framebu
     let (min_x, min_y, max_x, max_y) = calculate_bounding_box(&a, &b, &c);
 
     let triangle_area = edge_function(&a, &b, &c);
-    let light_dir = Vec3::new(0.0, 0.0, -1.0);
+    let light_dir = Vec3::new(0.0, 0.0, 1.0);
 
     // Iterate over each pixel in the bounding box
     for y in min_y..=max_y {
