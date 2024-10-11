@@ -46,7 +46,9 @@ pub fn triangle(
                 // Check if the point is inside the triangle
                 if w1 >= 0.0 && w1 <= 1.0 && w2 >= 0.0 && w2 <= 1.0 && w3 >= 0.0 && w3 <= 1.0 {
                     // Interpolate normal
-                    let normal = v1.transformed_normal;
+                    let normal = v1.transformed_normal * w1
+                        + v2.transformed_normal * w2
+                        + v3.transformed_normal * w3;
                     let normal = normal.normalize();
 
                     // Calculate lighting intensity
