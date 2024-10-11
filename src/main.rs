@@ -127,7 +127,7 @@ fn main() {
     );
 
     //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
-    let obj = Obj::load("assets/models/dragon.obj").expect("Failed to load obj");
+    let obj = Obj::load("assets/models/tiefighter.obj").expect("Failed to load obj");
     let vertex_arrays = obj.get_vertex_array();
     while window.is_open() {
         if window.is_key_down(Key::Escape) {
@@ -190,14 +190,6 @@ fn handle_input(window: &Window, camera: &mut Camera, last_mouse_pos: &mut (f32,
     }
     if window.is_key_down(Key::E) {
         camera.orbit(0.0, -PI / 180.0); // Bajar la cámara
-    }
-
-    // Zoom de la cámara: Z/X
-    if window.is_key_down(Key::Z) {
-        camera.zoom(2.0); // Incrementar el zoom
-    }
-    if window.is_key_down(Key::X) {
-        camera.zoom(-2.0); // Disminuir el zoom
     }
 
     // Obtener la posición actual del mouse
