@@ -31,23 +31,29 @@ fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
     translation_matrix * rotation_matrix * scale_matrix
 }
 
-fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex]) {
-    // Vertex Shader Stage: Transformación de los vértices usando los uniforms (matriz de modelo)
+fn render(
+    framebuffer: &mut Framebuffer,
+    uniforms: &Uniforms,
+    vertex_array: &[Vertex],
+    light_position: &Vec3,
+) {
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
-        let transformed = vertex_shader(vertex, uniforms); // Aplicar transformaciones
+        let transformed = vertex_shader(vertex, uniforms);
         transformed_vertices.push(transformed);
     }
 
-    // Ensamblar triángulos de los vértices transformados y rasterizarlos
     for i in (0..transformed_vertices.len()).step_by(3) {
         if i + 2 < transformed_vertices.len() {
             let v1 = &transformed_vertices[i];
             let v2 = &transformed_vertices[i + 1];
             let v3 = &transformed_vertices[i + 2];
 
-            // Llamada a la función triangle para calcular los fragmentos y aplicar el Z-buffer
-            triangle(v1, v2, v3, framebuffer);
+            // Calcular la dirección de la luz basada en la posición de la luz
+            let light_dir = (*light_position - v1.transformed_position).normalize();
+
+            // Llamar a la función triangle, pasando la nueva dirección de la luz
+            triangle(v1, v2, v3, framebuffer, light_dir);
         }
     }
 }
@@ -78,8 +84,9 @@ fn main() {
     let mut translation = Vec3::new(300.0, 200.0, 0.0);
     let mut rotation = Vec3::new(0.0, 0.0, 0.0);
     let mut scale = 20.0f32;
+    let mut light_position = Vec3::new(0.0, 0.0, -1.0); // Posición inicial de la luz
 
-    let obj = Obj::load("assets/models/dragon_suavized.obj").expect("Failed to load obj");
+    let obj = Obj::load("assets/models/tiefighter.obj").expect("Failed to load obj");
     let vertex_arrays = obj.get_vertex_array();
 
     while window.is_open() {
@@ -88,7 +95,13 @@ fn main() {
         }
 
         // Manejar la entrada de usuario
-        handle_input(&window, &mut translation, &mut rotation, &mut scale);
+        handle_input(
+            &window,
+            &mut translation,
+            &mut rotation,
+            &mut scale,
+            &mut light_position,
+        );
 
         framebuffer.clear();
 
@@ -96,7 +109,12 @@ fn main() {
         let uniforms = Uniforms { model_matrix };
 
         framebuffer.set_current_color(0xFFDDDD);
-        render(&mut framebuffer, &uniforms, &vertex_arrays);
+        render(
+            &mut framebuffer,
+            &uniforms,
+            &vertex_arrays,
+            &mut light_position,
+        );
 
         window
             .update_with_buffer(
@@ -110,7 +128,13 @@ fn main() {
     }
 }
 
-fn handle_input(window: &Window, translation: &mut Vec3, rotation: &mut Vec3, scale: &mut f32) {
+fn handle_input(
+    window: &Window,
+    translation: &mut Vec3,
+    rotation: &mut Vec3,
+    scale: &mut f32,
+    light_position: &mut Vec3,
+) {
     // Movimiento de traslación: WASD
     if window.is_key_down(Key::D) {
         translation.x += 10.0; // Mover a la derecha
@@ -123,6 +147,20 @@ fn handle_input(window: &Window, translation: &mut Vec3, rotation: &mut Vec3, sc
     }
     if window.is_key_down(Key::S) {
         translation.y += 10.0; // Mover hacia abajo
+    }
+
+    // Movimiento de la luz: TFGH
+    if window.is_key_down(Key::Up) {
+        light_position.y += 1.0; // Mover la luz hacia arriba
+    }
+    if window.is_key_down(Key::Down) {
+        light_position.y -= 1.0; // Mover la luz hacia abajo
+    }
+    if window.is_key_down(Key::Left) {
+        light_position.x -= 1.0; // Mover la luz a la izquierda
+    }
+    if window.is_key_down(Key::Right) {
+        light_position.x += 1.0; // Mover la luz a la derecha
     }
 
     // Escalar: R y F
