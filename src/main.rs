@@ -1,7 +1,7 @@
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::{look_at, perspective, Mat4, Vec3};
 use std::f32::consts::PI;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 mod camera;
 mod color;
@@ -114,10 +114,15 @@ fn main() {
 
     framebuffer.set_background_color(0x333355);
 
-    let mut translation = Vec3::new(0.0, 0.0, 0.0);
-    let mut rotation = Vec3::new(0.0, 0.0, 0.0);
-    let mut scale = 1.0f32;
+    let mut translation1 = Vec3::new(0.0, 0.0, 0.0); // Para el tiefighter
+    let mut rotation1 = Vec3::new(0.0, 0.0, 0.0); // Para el tiefighter
+    let mut scale1 = 1.0f32; // Para el tiefighter
 
+    let mut translation2 = Vec3::new(20.0, 0.0, 0.0); // Para el charizard, ajusta la posición
+    let mut rotation2 = Vec3::new(0.0, 0.0, 0.0); // Para el charizard
+    let mut scale2 = 2.0f32; // Para el charizard
+
+    let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
 
     let mut camera = Camera::new(
@@ -127,8 +132,13 @@ fn main() {
     );
 
     //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
-    let obj = Obj::load("assets/models/tiefighter.obj").expect("Failed to load obj");
-    let vertex_arrays = obj.get_vertex_array();
+    let obj1 = Obj::load("assets/models/tiefighter.obj").expect("Failed to load obj");
+    let vertex_arrays1 = obj1.get_vertex_array();
+
+    // Cargar el modelo del Charizard
+    let obj2 = Obj::load("assets/models/charizard.obj").expect("Failed to load obj");
+    let vertex_arrays2 = obj2.get_vertex_array();
+
     while window.is_open() {
         if window.is_key_down(Key::Escape) {
             break;
@@ -139,21 +149,40 @@ fn main() {
 
         framebuffer.clear();
 
-        let model_matrix = create_model_matrix(translation, scale, rotation);
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up);
         let projection_matrix =
             create_perspective_matrix(window_width as f32, window_height as f32);
         let viewport_matrix =
             create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
-        let uniforms = Uniforms {
-            model_matrix,
+
+        // Configurar uniforms para el tiefighter
+        let model_matrix1 = create_model_matrix(translation1, scale1, rotation1);
+        let uniforms1 = Uniforms {
+            model_matrix: model_matrix1,
             view_matrix,
             projection_matrix,
             viewport_matrix,
         };
 
         framebuffer.set_current_color(0xFFDDDD);
-        render(&mut framebuffer, &uniforms, &vertex_arrays);
+        render(&mut framebuffer, &uniforms1, &vertex_arrays1);
+
+        // Rotar charizard en base al tiempo transcurrido
+        let elapsed_time = start_time.elapsed().as_secs_f32();
+        rotation2.y = elapsed_time; // Gira alrededor del eje Y en función del tiempo
+
+        // Configurar uniforms para el charizard
+        let model_matrix2 = create_model_matrix(translation2, scale2, rotation2);
+        let uniforms2 = Uniforms {
+            model_matrix: model_matrix2,
+            view_matrix,
+            projection_matrix,
+            viewport_matrix,
+        };
+
+        // Renderizar el charizard
+        framebuffer.set_current_color(0xFFAA00); // Un color diferente, si lo prefieres
+        render(&mut framebuffer, &uniforms2, &vertex_arrays2);
 
         window
             .update_with_buffer(
