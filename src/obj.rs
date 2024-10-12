@@ -32,12 +32,12 @@ impl Obj {
                     vertices: mesh
                         .positions
                         .chunks(3)
-                        .map(|v| Vec3::new(v[0], -v[1], -v[2]))
+                        .map(|v| Vec3::new(v[0], v[1], v[2]))
                         .collect(),
                     normals: mesh
                         .normals
                         .chunks(3)
-                        .map(|n| Vec3::new(n[0], -n[1], -n[2]))
+                        .map(|n| Vec3::new(n[0], -n[1], n[2]))
                         .collect(),
                     texcoords: mesh
                         .texcoords
