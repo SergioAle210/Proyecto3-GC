@@ -105,6 +105,8 @@ El siguiente es un ejemplo visual de lo que verás al ejecutar el programa:
 - Un modelo `tiefighter` y un `charizard` rotan constantemente.
 - La luz direccional estática ilumina el modelo.
 
+![](https://github.com/SergioAle210/Proyecto3-GC/blob/main/assets/videos/Proyecto3.gif)
+
 ## Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT. Para más detalles, consulta el archivo `LICENSE`.
