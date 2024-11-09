@@ -7,7 +7,7 @@ mod camera;
 mod color;
 mod fragment;
 mod framebuffer;
-mod line;
+// mod line;
 mod obj;
 mod shaders;
 mod triangle;
@@ -16,7 +16,7 @@ mod vertex;
 use camera::Camera;
 use framebuffer::Framebuffer;
 use obj::Obj;
-use shaders::vertex_shader;
+use shaders::{fragment_shader, vertex_shader};
 use triangle::triangle;
 use vertex::Vertex;
 
@@ -25,6 +25,7 @@ pub struct Uniforms {
     view_matrix: Mat4,
     projection_matrix: Mat4,
     viewport_matrix: Mat4,
+    time: u32,
 }
 
 fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
@@ -37,20 +38,41 @@ fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
 }
 
 fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex]) {
+    // Vertex Shader Stage
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
         let transformed = vertex_shader(vertex, uniforms);
         transformed_vertices.push(transformed);
     }
 
+    // Primitive Assembly Stage
+    let mut triangles = Vec::new();
     for i in (0..transformed_vertices.len()).step_by(3) {
         if i + 2 < transformed_vertices.len() {
-            let v1 = &transformed_vertices[i];
-            let v2 = &transformed_vertices[i + 1];
-            let v3 = &transformed_vertices[i + 2];
+            triangles.push([
+                transformed_vertices[i].clone(),
+                transformed_vertices[i + 1].clone(),
+                transformed_vertices[i + 2].clone(),
+            ]);
+        }
+    }
 
-            // Llamar a la función triangle, pasando la nueva dirección de la luz
-            triangle(v1, v2, v3, framebuffer);
+    // Rasterization Stage
+    let mut fragments = Vec::new();
+    for tri in &triangles {
+        fragments.extend(triangle(&tri[0], &tri[1], &tri[2]));
+    }
+
+    // Fragment Processing Stage
+    for fragment in fragments {
+        let x = fragment.position.x as usize;
+        let y = fragment.position.y as usize;
+        if x < framebuffer.width && y < framebuffer.height {
+            // Apply fragment shader
+            let shaded_color = fragment_shader(&fragment, &uniforms);
+            let color = shaded_color.to_hex();
+            framebuffer.set_current_color(color);
+            framebuffer.point(x, y, fragment.depth);
         }
     }
 }
@@ -120,23 +142,24 @@ fn main() {
 
     let mut translation2 = Vec3::new(20.0, 0.0, 0.0); // Para el charizard, ajusta la posición
     let mut rotation2 = Vec3::new(0.0, 0.0, 0.0); // Para el charizard
-    let mut scale2 = 2.0f32; // Para el charizard
+    let mut scale2 = 1.0f32; // Para el charizard
 
     let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
 
     let mut camera = Camera::new(
-        Vec3::new(0.0, 0.0, 30.0),
+        Vec3::new(0.0, 0.0, 5.0),
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 1.0, 0.0),
     );
 
     //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
-    let obj1 = Obj::load("assets/models/tiefighter.obj").expect("Failed to load obj");
+    let obj1 = Obj::load("assets/models/sphere.obj").expect("Failed to load obj");
     let vertex_arrays1 = obj1.get_vertex_array();
+    let time = 0;
 
     // Cargar el modelo del Charizard
-    let obj2 = Obj::load("assets/models/charizard.obj").expect("Failed to load obj");
+    let obj2 = Obj::load("assets/models/sphere.obj").expect("Failed to load obj");
     let vertex_arrays2 = obj2.get_vertex_array();
 
     while window.is_open() {
@@ -155,6 +178,9 @@ fn main() {
         let viewport_matrix =
             create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
 
+        let elapsed_time = start_time.elapsed().as_secs_f32();
+        rotation1.y = elapsed_time; // Gira alrededor del eje Y en función del tiempo
+
         // Configurar uniforms para el tiefighter
         let model_matrix1 = create_model_matrix(translation1, scale1, rotation1);
         let uniforms1 = Uniforms {
@@ -162,7 +188,11 @@ fn main() {
             view_matrix,
             projection_matrix,
             viewport_matrix,
+            time,
         };
+
+        //framebuffer.set_current_color(0xFFDDDD);
+        //render(&mut framebuffer, &uniforms1, &vertex_arrays1);
 
         framebuffer.set_current_color(0xFFDDDD);
         render(&mut framebuffer, &uniforms1, &vertex_arrays1);
@@ -178,9 +208,9 @@ fn main() {
             view_matrix,
             projection_matrix,
             viewport_matrix,
+            time,
         };
 
-        // Renderizar el charizard
         framebuffer.set_current_color(0xFFAA00); // Un color diferente, si lo prefieres
         render(&mut framebuffer, &uniforms2, &vertex_arrays2);
 
