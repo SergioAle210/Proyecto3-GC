@@ -405,6 +405,11 @@ fn main() {
             &mut tie_fighter_up,
         );
 
+        // Actualizar la posición y orientación de la cámara para seguir la nave
+        camera.eye = tie_fighter_position - tie_fighter_direction * 5.0 + tie_fighter_up * 2.0;
+        camera.center = tie_fighter_position;
+        camera.up = tie_fighter_up;
+
         framebuffer.clear();
 
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up);
@@ -415,25 +420,17 @@ fn main() {
 
         let elapsed_time = start_time.elapsed().as_secs_f32();
 
-        let view_matrix_tie_fighter = create_view_matrix(
-            tie_fighter_position - tie_fighter_direction * 5.0, // Cámara detrás de la nave
-            tie_fighter_position,                               // Mirando hacia la nave
-            tie_fighter_up,                                     // Vector "arriba"
-        );
-        // Crear la matriz de modelo para la nave
-        let model_matrix_tie_fighter = create_model_matrix(
-            tie_fighter_position,     // Posición de la nave
-            0.1,                      // Escala de la nave
-            Vec3::new(0.0, 0.0, 0.0), // Sin rotación extra
-        );
+        let model_matrix_tie_fighter = nalgebra_glm::translation(&tie_fighter_position)
+            * nalgebra_glm::look_at(&Vec3::zeros(), &tie_fighter_direction, &tie_fighter_up)
+            * nalgebra_glm::scaling(&Vec3::new(0.1, 0.1, 0.1));
 
         let uniforms_tie_fighter = Uniforms {
             model_matrix: model_matrix_tie_fighter,
-            view_matrix: view_matrix_tie_fighter,
+            view_matrix,
             projection_matrix,
             viewport_matrix,
             time: elapsed_time as u32,
-            noise: create_noise(), // Opcional si se usa un shader con ruido
+            noise: create_noise(),
         };
 
         // Renderizar la nave
@@ -441,9 +438,7 @@ fn main() {
             &mut framebuffer,
             &uniforms_tie_fighter,
             &vertex_arrays_tie_fighter,
-            |fragment, uniforms| {
-                color::Color::new(224, 105, 22) // Color blanco para la nave
-            },
+            |fragment, uniforms| color::Color::new(39, 101, 167),
         );
 
         for i in 0..translations.len() {
@@ -670,29 +665,22 @@ fn handle_tie_fighter_input(
 
     // Movimiento adelante/atrás
     if window.is_key_down(Key::Up) {
-        *position += *direction * speed;
+        *position += *direction * speed; // Avanzar en la dirección actual
     }
     if window.is_key_down(Key::Down) {
-        *position -= *direction * speed;
+        *position -= *direction * speed; // Retroceder en la dirección actual
     }
 
-    // Movimiento lateral (izquierda/derecha)
-    let right = nalgebra_glm::cross(&direction, &up); // Vector a la derecha
-    if window.is_key_down(Key::Left) {
-        *position -= right * speed;
-    }
-    if window.is_key_down(Key::Right) {
-        *position += right * speed;
-    }
-
-    // Rotación hacia arriba/abajo
+    // Rotación hacia arriba/abajo (pitch)
     if window.is_key_down(Key::T) {
-        let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &right.normalize());
+        let right = nalgebra_glm::cross(&direction, &up).normalize(); // Vector hacia la derecha
+        let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &right);
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
         *up = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(up)));
     }
     if window.is_key_down(Key::G) {
-        let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &right.normalize());
+        let right = nalgebra_glm::cross(&direction, &up).normalize(); // Vector hacia la derecha
+        let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &right);
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
         *up = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(up)));
     }
