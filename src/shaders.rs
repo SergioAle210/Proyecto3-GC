@@ -387,3 +387,27 @@ pub fn earth(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     // Adjust intensity to simulate lighting effects (optional)
     blended_color * fragment.intensity
 }
+
+pub fn luna_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+    let zoom = 100.0;
+    let ox = 0.0;
+    let oy = 0.0;
+    let x = fragment.vertex_position.x;
+    let y = fragment.vertex_position.y;
+
+    let noise_value = uniforms
+        .noise
+        .get_noise_2d((x + ox) * zoom, (y + oy) * zoom);
+
+    let spot_threshold = 0.5;
+    let spot_color = Color::new(135, 135, 135); // gris oscuro
+    let base_color = Color::new(191, 191, 191); // Black
+
+    let noise_color = if noise_value < spot_threshold {
+        spot_color
+    } else {
+        base_color
+    };
+
+    noise_color * fragment.intensity
+}

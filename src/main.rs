@@ -20,7 +20,8 @@ use framebuffer::Framebuffer;
 use obj::Obj;
 use shaders::{
     cellular_shader, cloud_shader, combined_shader, dalmata_shader, earth, fragment_shader,
-    lava_shader, moving_circles_shader, neon_light_shader, static_pattern_shader, vertex_shader,
+    lava_shader, luna_shader, moving_circles_shader, neon_light_shader, static_pattern_shader,
+    vertex_shader,
 };
 use triangle::triangle;
 use vertex::Vertex;
@@ -43,7 +44,8 @@ fn create_noise_for_planet(index: usize) -> FastNoiseLite {
         4 => create_cloud_noise(),
         5 => create_combined_noise(),
         6 => create_cloud_noise(),
-        _ => create_noise(), // Por defecto
+        7 => create_cloud_noise(), // noise para la luna
+        _ => create_noise(),       // Por defecto
     }
 }
 
@@ -278,6 +280,7 @@ fn main() {
         combined_shader,
         cellular_shader,
         earth,
+        luna_shader,
     ];
 
     //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
@@ -286,6 +289,9 @@ fn main() {
 
     let obj_ring = Obj::load("assets/models/saturn.obj").expect("Failed to load obj_ring");
     let vertex_arrays_ring = obj_ring.get_vertex_array();
+
+    let obj_moon = Obj::load("assets/models/sphere.obj").expect("Failed to load obj_moon");
+    let vertex_arrays_moon = obj_moon.get_vertex_array();
 
     let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
@@ -355,8 +361,37 @@ fn main() {
                     shaders[i],
                 );
             } else if i == 6 {
-                // Renderizar el terreno del planeta Tierra (ID 6)
+                // Renderizar la Tierra
                 render(&mut framebuffer, &uniforms, &vertex_arrays, earth);
+
+                // Calcular la órbita de la luna
+                let moon_orbit_radius = 0.7; // Radio de la órbita
+                let moon_speed = 0.5; // Velocidad de la órbita
+                let moon_angle = elapsed_time * moon_speed;
+
+                let moon_x = translations[i].x + moon_orbit_radius * moon_angle.cos();
+                let moon_y = translations[i].y + moon_orbit_radius * moon_angle.sin();
+
+                let moon_translation = Vec3::new(moon_x, moon_y, 0.0);
+                let moon_model_matrix =
+                    create_model_matrix(moon_translation, scales[i] * 0.3, rotations[i]);
+
+                let moon_uniforms = Uniforms {
+                    model_matrix: moon_model_matrix,
+                    view_matrix,
+                    projection_matrix,
+                    viewport_matrix,
+                    time: elapsed_time as u32,
+                    noise: create_noise_for_planet(7),
+                };
+
+                // Renderizar la Luna
+                render(
+                    &mut framebuffer,
+                    &moon_uniforms,
+                    &vertex_arrays_moon,
+                    luna_shader,
+                );
             } else {
                 // Renderizar los demás planetas normalmente
                 render(&mut framebuffer, &uniforms, &vertex_arrays, shaders[i]);
