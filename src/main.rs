@@ -316,6 +316,11 @@ fn main() {
         Obj::load("assets/models/tiefighter.obj").expect("Failed to load tiefigther.obj");
     let vertex_arrays_tie_fighter = obj_tie_fighter.get_vertex_array();
 
+    // Variables para la nave
+    let mut tie_fighter_position = Vec3::new(0.0, 0.0, 7.0); // Posición inicial
+    let mut tie_fighter_direction = Vec3::new(0.0, 0.0, -1.0); // Dirección inicial
+    let mut tie_fighter_up = Vec3::new(0.0, 1.0, 0.0); // Vector "arriba"
+
     let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
 
@@ -392,6 +397,14 @@ fn main() {
 
         handle_input(&window, &mut camera, &mut last_mouse_pos);
 
+        // Manejar los controles de la nave
+        handle_tie_fighter_input(
+            &window,
+            &mut tie_fighter_position,
+            &mut tie_fighter_direction,
+            &mut tie_fighter_up,
+        );
+
         framebuffer.clear();
 
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up);
@@ -402,20 +415,21 @@ fn main() {
 
         let elapsed_time = start_time.elapsed().as_secs_f32();
 
-        // Calcular la posición de la nave
-        let direction = nalgebra_glm::normalize(&(camera.center - camera.eye));
-        let tie_fighter_position = camera.eye + direction * 2.0; // La nave estará a 2 unidades frente a la cámara
-
+        let view_matrix_tie_fighter = create_view_matrix(
+            tie_fighter_position - tie_fighter_direction * 5.0, // Cámara detrás de la nave
+            tie_fighter_position,                               // Mirando hacia la nave
+            tie_fighter_up,                                     // Vector "arriba"
+        );
         // Crear la matriz de modelo para la nave
         let model_matrix_tie_fighter = create_model_matrix(
             tie_fighter_position,     // Posición de la nave
             0.1,                      // Escala de la nave
-            Vec3::new(0.0, 0.0, 0.0), // Rotación (animada)
+            Vec3::new(0.0, 0.0, 0.0), // Sin rotación extra
         );
 
         let uniforms_tie_fighter = Uniforms {
             model_matrix: model_matrix_tie_fighter,
-            view_matrix,
+            view_matrix: view_matrix_tie_fighter,
             projection_matrix,
             viewport_matrix,
             time: elapsed_time as u32,
@@ -642,4 +656,54 @@ fn calculate_sphere_radius(vertices: &[Vertex]) -> f32 {
     }
 
     max_distance
+}
+
+/// Manejar controles de la nave
+fn handle_tie_fighter_input(
+    window: &Window,
+    position: &mut Vec3,
+    direction: &mut Vec3,
+    up: &mut Vec3,
+) {
+    let speed = 0.5; // Velocidad de la nave
+    let rotation_speed = 0.05; // Velocidad de rotación
+
+    // Movimiento adelante/atrás
+    if window.is_key_down(Key::Up) {
+        *position += *direction * speed;
+    }
+    if window.is_key_down(Key::Down) {
+        *position -= *direction * speed;
+    }
+
+    // Movimiento lateral (izquierda/derecha)
+    let right = nalgebra_glm::cross(&direction, &up); // Vector a la derecha
+    if window.is_key_down(Key::Left) {
+        *position -= right * speed;
+    }
+    if window.is_key_down(Key::Right) {
+        *position += right * speed;
+    }
+
+    // Rotación hacia arriba/abajo
+    if window.is_key_down(Key::T) {
+        let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &right.normalize());
+        *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
+        *up = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(up)));
+    }
+    if window.is_key_down(Key::G) {
+        let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &right.normalize());
+        *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
+        *up = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(up)));
+    }
+
+    // Rotación hacia los lados (yaw)
+    if window.is_key_down(Key::F) {
+        let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &up.normalize());
+        *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
+    }
+    if window.is_key_down(Key::H) {
+        let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &up.normalize());
+        *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
+    }
 }
