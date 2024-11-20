@@ -1,3 +1,4 @@
+use fragment::Fragment;
 use minifb::{Key, Window, WindowOptions};
 use nalgebra_glm::{look_at, perspective, Mat4, Vec3};
 use std::f32::consts::PI;
@@ -17,7 +18,11 @@ use camera::Camera;
 use fastnoise_lite::{FastNoiseLite, FractalType, NoiseType};
 use framebuffer::Framebuffer;
 use obj::Obj;
-use shaders::{fragment_shader, vertex_shader};
+use shaders::{
+    cellular_shader, cloud_layer_shader, cloud_shader, combined_cellular_cloud_shader,
+    combined_shader, dalmata_shader, earth, earth_shader, fragment_shader, lava_shader,
+    moving_circles_shader, neon_light_shader, static_pattern_shader, vertex_shader,
+};
 use triangle::triangle;
 use vertex::Vertex;
 
@@ -30,11 +35,27 @@ pub struct Uniforms {
     noise: FastNoiseLite,
 }
 
+fn create_noise_for_planet(index: usize) -> FastNoiseLite {
+    match index {
+        0 => create_lava_noise(),
+        1 => create_neon_noise(),
+        2 => create_static_pattern_noise(),
+        3 => create_dalmata_noise(),
+        4 => create_cloud_noise(),
+        5 => create_combined_noise(),
+        6 => create_cloud_noise(),
+        _ => create_noise(), // Por defecto
+    }
+}
+
 fn create_noise() -> FastNoiseLite {
-    create_cloud_noise()
-    // create_cell_noise()
-    // create_ground_noise()
-    // create_lava_noise()
+    let mut noise = FastNoiseLite::with_seed(1330);
+    noise.set_noise_type(Some(NoiseType::Cellular));
+    noise.set_fractal_type(Some(FractalType::FBm));
+    noise.set_fractal_lacunarity(Some(1.480));
+    noise.set_fractal_octaves(Some(6));
+    noise.set_frequency(Some(0.005));
+    noise
 }
 
 fn create_cloud_noise() -> FastNoiseLite {
@@ -78,6 +99,43 @@ fn create_lava_noise() -> FastNoiseLite {
     noise
 }
 
+fn create_dalmata_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(1337);
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2)); // Cambiar a Cellular
+    noise.set_frequency(Some(0.3)); // Ajusta la frecuencia para el detalle deseado
+    noise.set_fractal_type(Some(FractalType::FBm)); // Puedes usar FBm para agregar más detalle
+    noise
+}
+
+fn create_neon_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(8888);
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2S)); // Variación más suave
+    noise.set_frequency(Some(0.02)); // Características amplias
+    noise.set_fractal_type(Some(FractalType::FBm));
+    noise.set_fractal_octaves(Some(5));
+    noise.set_fractal_gain(Some(0.45));
+    noise
+}
+
+fn create_static_pattern_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(9999);
+    noise.set_noise_type(Some(NoiseType::Perlin));
+    noise.set_frequency(Some(0.08)); // Patrones más definidos
+    noise.set_fractal_type(Some(FractalType::None)); // Sin fractales
+    noise
+}
+
+fn create_combined_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(1234);
+    noise.set_noise_type(Some(NoiseType::Cellular));
+    noise.set_fractal_type(Some(FractalType::FBm));
+    noise.set_frequency(Some(0.03));
+    noise.set_fractal_octaves(Some(6));
+    noise.set_fractal_gain(Some(0.5));
+    noise.set_fractal_lacunarity(Some(2.0));
+    noise
+}
+
 fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
     let scale_matrix = nalgebra_glm::scaling(&Vec3::new(scale, scale, scale));
     let rotation_matrix = nalgebra_glm::rotation(rotation.x, &Vec3::x_axis())
@@ -87,7 +145,22 @@ fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
     translation_matrix * rotation_matrix * scale_matrix
 }
 
-fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Vertex]) {
+fn create_earth_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(42);
+    noise.set_noise_type(Some(NoiseType::Cellular));
+    noise.set_fractal_type(Some(FractalType::FBm)); // Fractal Brownian Motion para mayor detalle
+    noise.set_fractal_octaves(Some(5));
+    noise.set_fractal_gain(Some(0.5));
+    noise.set_frequency(Some(0.03));
+    noise
+}
+
+fn render(
+    framebuffer: &mut Framebuffer,
+    uniforms: &Uniforms,
+    vertex_array: &[Vertex],
+    shader: fn(&Fragment, &Uniforms) -> color::Color,
+) {
     // Vertex Shader Stage
     let mut transformed_vertices = Vec::with_capacity(vertex_array.len());
     for vertex in vertex_array {
@@ -118,8 +191,7 @@ fn render(framebuffer: &mut Framebuffer, uniforms: &Uniforms, vertex_array: &[Ve
         let x = fragment.position.x as usize;
         let y = fragment.position.y as usize;
         if x < framebuffer.width && y < framebuffer.height {
-            // Apply fragment shader
-            let shaded_color = fragment_shader(&fragment, &uniforms);
+            let shaded_color = shader(&fragment, uniforms);
             let color = shaded_color.to_hex();
             framebuffer.set_current_color(color);
             framebuffer.point(x, y, fragment.depth);
@@ -186,13 +258,35 @@ fn main() {
 
     framebuffer.set_background_color(0x333355);
 
-    let mut translation1 = Vec3::new(0.0, 0.0, 0.0); // Para el tiefighter
-    let mut rotation1 = Vec3::new(0.0, 0.0, 0.0); // Para el tiefighter
-    let mut scale1 = 1.0f32; // Para el tiefighter
+    let mut translations = vec![
+        Vec3::new(2.0, 0.0, 0.0),  // Marte
+        Vec3::new(0.0, 0.0, 0.0),  // Neon
+        Vec3::new(-2.0, 0.0, 0.0), // Sol
+        Vec3::new(0.0, -2.0, 0.0), // Dalmata
+        Vec3::new(0.0, 4.0, 0.0),  // Saturno
+        Vec3::new(1.0, 2.0, 0.0),  // Kepler-452b
+        Vec3::new(-1.0, 2.0, 0.0), // Tierra
+    ];
 
-    let mut translation2 = Vec3::new(2.0, 0.0, 0.0); // Para el charizard, ajusta la posición
-    let mut rotation2 = Vec3::new(0.0, 0.0, 0.0); // Para el charizard
-    let mut scale2 = 1.0f32; // Para el charizard
+    let mut rotations = vec![Vec3::new(0.0, 0.0, 0.0); 7];
+    let scales = vec![1.0f32; 7];
+
+    let shaders = vec![
+        lava_shader,
+        neon_light_shader,
+        static_pattern_shader,
+        dalmata_shader,
+        combined_shader,
+        cellular_shader,
+        earth,
+    ];
+
+    //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
+    let obj = Obj::load("assets/models/sphere.obj").expect("Failed to load obj");
+    let vertex_arrays = obj.get_vertex_array();
+
+    let obj_ring = Obj::load("assets/models/saturn.obj").expect("Failed to load obj_ring");
+    let vertex_arrays_ring = obj_ring.get_vertex_array();
 
     let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
@@ -203,25 +297,14 @@ fn main() {
         Vec3::new(0.0, 1.0, 0.0),
     );
 
-    //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
-    let obj1 = Obj::load("assets/models/sphere.obj").expect("Failed to load obj");
-    let vertex_arrays1 = obj1.get_vertex_array();
-    let time = 0;
-
-    // Cargar el modelo del Charizard
-    let obj2 = Obj::load("assets/models/sphere.obj").expect("Failed to load obj");
-    let vertex_arrays2 = obj2.get_vertex_array();
-
     while window.is_open() {
         if window.is_key_down(Key::Escape) {
             break;
         }
 
-        // Manejar la entrada de usuario
         handle_input(&window, &mut camera, &mut last_mouse_pos);
 
         framebuffer.clear();
-        let noise1 = create_noise();
 
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up);
         let projection_matrix =
@@ -230,43 +313,56 @@ fn main() {
             create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
 
         let elapsed_time = start_time.elapsed().as_secs_f32();
-        rotation1.y = elapsed_time; // Gira alrededor del eje Y en función del tiempo
 
-        // Configurar uniforms para el tiefighter
-        let model_matrix1 = create_model_matrix(translation1, scale1, rotation1);
-        let uniforms1 = Uniforms {
-            model_matrix: model_matrix1,
-            view_matrix,
-            projection_matrix,
-            viewport_matrix,
-            time,
-            noise: noise1,
-        };
+        for i in 0..7 {
+            rotations[i].y = elapsed_time * (0.1 + i as f32 * 0.05);
 
-        //framebuffer.set_current_color(0xFFDDDD);
-        //render(&mut framebuffer, &uniforms1, &vertex_arrays1);
+            let model_matrix = create_model_matrix(translations[i], scales[i], rotations[i]);
+            let noise = create_noise_for_planet(i);
 
-        framebuffer.set_current_color(0xFFDDDD);
-        render(&mut framebuffer, &uniforms1, &vertex_arrays1);
+            let uniforms = Uniforms {
+                model_matrix,
+                view_matrix,
+                projection_matrix,
+                viewport_matrix,
+                time: elapsed_time as u32,
+                noise,
+            };
 
-        // Rotar charizard en base al tiempo transcurrido
-        let elapsed_time = start_time.elapsed().as_secs_f32();
-        rotation2.y = elapsed_time; // Gira alrededor del eje Y en función del tiempo
+            if i == 4 {
+                // Renderizar el anillo adicional para el planeta con ID 4
 
-        // Configurar uniforms para el charizard
-        let noise2 = create_noise();
-        let model_matrix2 = create_model_matrix(translation2, scale2, rotation2);
-        let uniforms2 = Uniforms {
-            model_matrix: model_matrix2,
-            view_matrix,
-            projection_matrix,
-            viewport_matrix,
-            time,
-            noise: noise2,
-        };
+                let ring_model_matrix = create_model_matrix(
+                    translations[i], // Posición igual al planeta
+                    scales[i] * 0.7, // Escala ajustada (1.5 veces el tamaño del planeta)
+                    rotations[i],    // Rotación igual al planeta
+                );
 
-        framebuffer.set_current_color(0xFFAA00); // Un color diferente, si lo prefieres
-        render(&mut framebuffer, &uniforms2, &vertex_arrays2);
+                let noise_ring = create_noise_for_planet(i);
+
+                let ring_uniforms = Uniforms {
+                    model_matrix: ring_model_matrix, // Matriz específica del anillo
+                    view_matrix,
+                    projection_matrix,
+                    viewport_matrix,
+                    time: elapsed_time as u32,
+                    noise: noise_ring,
+                };
+
+                render(
+                    &mut framebuffer,
+                    &ring_uniforms,
+                    &vertex_arrays_ring,
+                    shaders[i],
+                );
+            } else if i == 6 {
+                // Renderizar el terreno del planeta Tierra (ID 6)
+                render(&mut framebuffer, &uniforms, &vertex_arrays, earth);
+            } else {
+                // Renderizar los demás planetas normalmente
+                render(&mut framebuffer, &uniforms, &vertex_arrays, shaders[i]);
+            }
+        }
 
         window
             .update_with_buffer(
