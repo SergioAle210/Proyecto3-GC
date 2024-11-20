@@ -107,6 +107,16 @@ El siguiente es un ejemplo visual de lo que verás al ejecutar el programa:
 
 ![](https://github.com/SergioAle210/Proyecto3-GC/blob/main/assets/videos/Proyecto3.gif)
 
+# Laboratorio 4 - Shaders
+
+El siguiente gif es un ejemplo visual de como se ve el programa luego de ejecutar los cambios del nuevo programa:
+
+- 7 Planetas donde cada uno tiene un shader diferente
+- 1 luna que orbita alrededor del planeta tierra
+- 1 cometa que esta orbitando por todo el sistema solar (con forma de árbol de navidad, porque ya se acerca la fecha)
+
+![](https://github.com/SergioAle210/Proyecto3-GC/blob/main/assets/videos/Laboratorio4.gif)
+
 ## Licencia
 
 Este proyecto está licenciado bajo la Licencia MIT. Para más detalles, consulta el archivo `LICENSE`.
