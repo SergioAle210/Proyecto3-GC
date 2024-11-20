@@ -370,9 +370,10 @@ pub fn earth(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let cloud_zoom = 100.0; // to move our values
     let cloud_ox = 100.0; // offset x in the noise map
     let cloud_oy = 100.0;
-    let cloud_noise_value = uniforms
-        .noise
-        .get_noise_2d(x * cloud_zoom + cloud_ox + t, y * cloud_zoom + cloud_oy);
+    let cloud_noise_value = uniforms.noise.get_noise_2d(
+        x * cloud_zoom + cloud_ox + t * 1.7,
+        y * cloud_zoom + cloud_oy,
+    );
 
     let cloud_threshold = 0.5; // Adjust this value to change cloud density
     let cloud_color = Color::new(255, 255, 255); // White for clouds
