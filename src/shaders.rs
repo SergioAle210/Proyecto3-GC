@@ -411,3 +411,29 @@ pub fn luna_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 
     noise_color * fragment.intensity
 }
+
+pub fn comet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+    let zoom = 200.0; // Ajustar el zoom para la cola
+    let ox = uniforms.time as f32 * 0.1; // Movimiento dinámico de la cola
+    let oy = 0.0;
+    let x = fragment.vertex_position.x;
+    let y = fragment.vertex_position.y;
+
+    // Valor de ruido para el efecto de la cola
+    let noise_value = uniforms
+        .noise
+        .get_noise_2d((x + ox) * zoom, (y + oy) * zoom);
+
+    // Umbral para distinguir núcleo y cola
+    let tail_threshold = 0.4;
+
+    let tail_color = Color::new(255, 165, 0); // Naranja para la cola
+    let core_color = Color::new(255, 255, 255); // Blanco para el núcleo
+
+    // Asignar colores dependiendo del ruido
+    if noise_value > tail_threshold {
+        tail_color * fragment.intensity
+    } else {
+        core_color * fragment.intensity
+    }
+}

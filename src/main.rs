@@ -19,9 +19,9 @@ use fastnoise_lite::{FastNoiseLite, FractalType, NoiseType};
 use framebuffer::Framebuffer;
 use obj::Obj;
 use shaders::{
-    cellular_shader, cloud_shader, combined_shader, dalmata_shader, earth, fragment_shader,
-    lava_shader, luna_shader, moving_circles_shader, neon_light_shader, static_pattern_shader,
-    vertex_shader,
+    cellular_shader, cloud_shader, combined_shader, comet_shader, dalmata_shader, earth,
+    fragment_shader, lava_shader, luna_shader, moving_circles_shader, neon_light_shader,
+    static_pattern_shader, vertex_shader,
 };
 use triangle::triangle;
 use vertex::Vertex;
@@ -44,7 +44,7 @@ fn create_noise_for_planet(index: usize) -> FastNoiseLite {
         4 => create_cloud_noise(),
         5 => create_combined_noise(),
         6 => create_cloud_noise(),
-        7 => create_cloud_noise(), // noise para la luna
+        7 => create_cloud_noise(), // noise para la luna y cometa
         _ => create_noise(),       // Por defecto
     }
 }
@@ -267,20 +267,20 @@ fn main() {
         Vec3::new(0.0, 4.0, 0.0),  // Saturno
         Vec3::new(1.0, 2.0, 0.0),  // Kepler-452b
         Vec3::new(-1.0, 2.0, 0.0), // Tierra
+        Vec3::new(0.0, 0.0, 0.0),  // Cometa (posición inicial)
     ];
 
-    let mut rotations = vec![Vec3::new(0.0, 0.0, 0.0); 7];
-    let scales = vec![1.0f32; 7];
-
+    let mut rotations = vec![Vec3::new(0.0, 0.0, 0.0); 8];
+    let scales = vec![1.0f32; 8];
     let shaders = vec![
-        lava_shader,
-        neon_light_shader,
-        static_pattern_shader,
-        dalmata_shader,
-        combined_shader,
-        cellular_shader,
-        earth,
-        luna_shader,
+        lava_shader,           // Marte
+        neon_light_shader,     // Neon
+        static_pattern_shader, // Sol
+        dalmata_shader,        // Dalmata
+        combined_shader,       // Saturno
+        cellular_shader,       // Kepler-452b
+        earth,                 // Tierra
+        comet_shader,          // Cometa
     ];
 
     //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
@@ -292,6 +292,9 @@ fn main() {
 
     let obj_moon = Obj::load("assets/models/sphere.obj").expect("Failed to load obj_moon");
     let vertex_arrays_moon = obj_moon.get_vertex_array();
+
+    let obj_comet = Obj::load("assets/models/sphere.obj").expect("Failed to load obj_comet");
+    let vertex_arrays_comet = obj_comet.get_vertex_array();
 
     let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
@@ -319,7 +322,7 @@ fn main() {
 
         let elapsed_time = start_time.elapsed().as_secs_f32();
 
-        for i in 0..7 {
+        for i in 0..translations.len() {
             rotations[i].y = elapsed_time * (0.1 + i as f32 * 0.05);
 
             let model_matrix = create_model_matrix(translations[i], scales[i], rotations[i]);
@@ -334,6 +337,7 @@ fn main() {
                 noise,
             };
 
+            // Renderizar el cometa
             if i == 4 {
                 // Renderizar el anillo adicional para el planeta con ID 4
 
@@ -391,6 +395,30 @@ fn main() {
                     &moon_uniforms,
                     &vertex_arrays_moon,
                     luna_shader,
+                );
+            } else if i == 7 {
+                // Renderizar el cometa
+                let comet_x = elapsed_time.sin() * 4.0; // Movimiento en el eje X
+                let comet_y = elapsed_time.cos() * 2.0; // Movimiento en el eje Y
+                let comet_translation = Vec3::new(comet_x, comet_y, 0.0);
+
+                let comet_model_matrix =
+                    create_model_matrix(comet_translation, 0.2, Vec3::new(0.0, 0.0, 0.0));
+
+                let comet_uniforms = Uniforms {
+                    model_matrix: comet_model_matrix,
+                    view_matrix,
+                    projection_matrix,
+                    viewport_matrix,
+                    time: elapsed_time as u32,
+                    noise: create_noise_for_planet(i),
+                };
+
+                render(
+                    &mut framebuffer,
+                    &comet_uniforms,
+                    &vertex_arrays_comet,
+                    comet_shader,
                 );
             } else {
                 // Renderizar los demás planetas normalmente
