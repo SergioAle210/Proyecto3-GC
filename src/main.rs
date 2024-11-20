@@ -17,6 +17,7 @@ mod vertex;
 use camera::Camera;
 use fastnoise_lite::{FastNoiseLite, FractalType, NoiseType};
 use framebuffer::Framebuffer;
+use image::{GenericImageView, RgbaImage};
 use obj::Obj;
 use shaders::{
     cellular_shader, cloud_shader, combined_shader, comet_shader, dalmata_shader, earth,
@@ -318,7 +319,7 @@ fn main() {
         Vec3::new(0.0, 1.0, 0.0),  // Vector "arriba"
     );
 
-    let mut should_update_camera_target = true;
+    let mut should_update_camera_target = false;
 
     let mut current_camera_target = 0; // Índice del planeta seleccionado
 
@@ -357,15 +358,29 @@ fn main() {
             should_update_camera_target = true;
         }
 
-        // Actualizar la posición de la cámara al planeta seleccionado
         if should_update_camera_target {
-            camera.eye = Vec3::new(
-                planet_orbits[current_camera_target] * 1.5,
-                0.0,
-                5.0, // Mantener una altura constante
-            );
-            camera.center = Vec3::new(0.0, 0.0, 0.0); // Centro del sistema solar o planeta
-            should_update_camera_target = false; // Desactivar actualización automática
+            let planet_position = translations[current_camera_target];
+            let planet_radius = scales[current_camera_target] * 1.5;
+
+            // Normalizar la dirección hacia el Sol
+            let direction_to_sun =
+                nalgebra_glm::normalize(&(Vec3::new(0.0, 0.0, 0.0) - planet_position));
+
+            // Calcular la posición de la cámara
+            camera.eye = planet_position - direction_to_sun * (planet_radius * 2.0);
+
+            // Validar la posición de la cámara
+            if camera.eye.norm() > 1e6 || camera.eye.norm() < 1e-3 {
+                println!(
+                    "Advertencia: Posición de la cámara fuera de rango: {:?}",
+                    camera.eye
+                );
+                camera.eye = Vec3::new(0.0, 0.0, 10.0); // Restablecer
+            }
+
+            println!("Posición de la cámara: {:?}", camera.eye);
+            camera.center = Vec3::new(0.0, 0.0, 0.0); // Mirar al Sol
+            should_update_camera_target = false; // Actualización completa
         }
 
         handle_input(&window, &mut camera, &mut last_mouse_pos);
@@ -569,4 +584,25 @@ fn handle_input(window: &Window, camera: &mut Camera, last_mouse_pos: &mut (f32,
         // Limitar la distancia mínima y máxima del zoom
         camera.eye.z = camera.eye.z.clamp(2.0, 100.0); // Valores arbitrarios, ajustables según tu escena
     }
+}
+
+fn calculate_sphere_radius(vertices: &[Vertex]) -> f32 {
+    // Inicializar el radio máximo en 0
+    let mut max_distance = 0.0;
+
+    for vertex in vertices {
+        // Calcular la distancia desde el origen (0,0,0)
+        let distance = nalgebra_glm::length(&Vec3::new(
+            vertex.position.x,
+            vertex.position.y,
+            vertex.position.z,
+        ));
+
+        // Actualizar el radio máximo si encontramos una distancia mayor
+        if distance > max_distance {
+            max_distance = distance;
+        }
+    }
+
+    max_distance
 }
