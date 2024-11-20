@@ -438,3 +438,43 @@ pub fn comet_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
         core_color * fragment.intensity
     }
 }
+
+pub fn sun_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+    // Colores base para el Sol (amarillo brillante y blanco)
+    let bright_color = Color::new(255, 255, 200); // Amarillo brillante
+    let hot_color = Color::new(255, 140, 0); // Naranja cálido
+
+    // Obtener la posición del fragmento
+    let position = Vec3::new(
+        fragment.vertex_position.x,
+        fragment.vertex_position.y,
+        fragment.depth,
+    );
+
+    // Ajustes para el efecto de ruido
+    let zoom = 200.0; // Factor de zoom para el ruido
+    let time_factor = uniforms.time as f32 * 0.02; // Factor temporal para animación
+
+    // Calcular valores de ruido en 3D con un desplazamiento basado en el tiempo
+    let noise_value1 = uniforms.noise.get_noise_3d(
+        position.x * zoom,
+        position.y * zoom,
+        position.z * zoom + time_factor,
+    );
+    let noise_value2 = uniforms.noise.get_noise_3d(
+        position.x * zoom + 100.0,
+        position.y * zoom + 100.0,
+        position.z * zoom + time_factor + 50.0,
+    );
+
+    // Promediar valores de ruido para suavizar las transiciones
+    let noise_value = (noise_value1 + noise_value2) * 0.5;
+
+    // Oscilación para simular "pulsos solares"
+    let pulsate = (time_factor * 2.0).sin() * 0.2;
+
+    // Mezclar colores en función del ruido y la oscilación
+    let color = hot_color.lerp(&bright_color, (noise_value + pulsate).clamp(0.0, 1.0));
+
+    color * fragment.intensity // Ajustar por intensidad del fragmento
+}

@@ -21,7 +21,7 @@ use obj::Obj;
 use shaders::{
     cellular_shader, cloud_shader, combined_shader, comet_shader, dalmata_shader, earth,
     fragment_shader, lava_shader, luna_shader, moving_circles_shader, neon_light_shader,
-    static_pattern_shader, vertex_shader,
+    static_pattern_shader, sun_shader, vertex_shader,
 };
 use triangle::triangle;
 use vertex::Vertex;
@@ -39,7 +39,7 @@ fn create_noise_for_planet(index: usize) -> FastNoiseLite {
     match index {
         0 => create_lava_noise(),
         1 => create_neon_noise(),
-        2 => create_static_pattern_noise(),
+        2 => create_sun_noise(),
         3 => create_dalmata_noise(),
         4 => create_cloud_noise(),
         5 => create_combined_noise(),
@@ -137,6 +137,17 @@ fn create_combined_noise() -> FastNoiseLite {
     noise
 }
 
+fn create_sun_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(12345); // Semilla para el ruido
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2)); // Ruido suave para superficies fluidas
+    noise.set_frequency(Some(0.02)); // Frecuencia baja para detalles amplios
+    noise.set_fractal_type(Some(FractalType::FBm)); // Fractal para agregar detalles
+    noise.set_fractal_octaves(Some(5)); // Más octavas para complejidad
+    noise.set_fractal_gain(Some(0.6)); // Escala de amplitud de detalles pequeños
+    noise.set_fractal_lacunarity(Some(2.5)); // Relación entre las frecuencias
+    noise
+}
+
 fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
     let scale_matrix = nalgebra_glm::scaling(&Vec3::new(scale, scale, scale));
     let rotation_matrix = nalgebra_glm::rotation(rotation.x, &Vec3::x_axis())
@@ -144,16 +155,6 @@ fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
         * nalgebra_glm::rotation(rotation.z, &Vec3::z_axis());
     let translation_matrix = nalgebra_glm::translation(&translation);
     translation_matrix * rotation_matrix * scale_matrix
-}
-
-fn create_earth_noise() -> FastNoiseLite {
-    let mut noise = FastNoiseLite::with_seed(42);
-    noise.set_noise_type(Some(NoiseType::Cellular));
-    noise.set_fractal_type(Some(FractalType::FBm)); // Fractal Brownian Motion para mayor detalle
-    noise.set_fractal_octaves(Some(5));
-    noise.set_fractal_gain(Some(0.5));
-    noise.set_frequency(Some(0.03));
-    noise
 }
 
 fn render(
@@ -247,7 +248,7 @@ fn main() {
     let mut framebuffer = Framebuffer::new(framebuffer_width, framebuffer_height);
 
     let mut window = Window::new(
-        "Rust Graphics - Renderer Example",
+        "Sistema Solar - Proyecto Final",
         window_width,
         window_height,
         WindowOptions::default(),
@@ -259,11 +260,22 @@ fn main() {
 
     framebuffer.set_background_color(0x333355);
 
+    // Posiciones iniciales en el plano eclíptico
+    let mut planet_orbits = vec![
+        2.0, // Marte
+        3.0, // Neon
+        4.0, // Sol (solo referencia para mantener alineación)
+        5.0, // Dalmata
+        6.0, // Saturno
+        7.0, // Kepler-452b
+        8.0, // Tierra
+    ];
+
     let mut translations = vec![
         Vec3::new(2.0, 0.0, 0.0),  // Marte
         Vec3::new(0.0, 0.0, 0.0),  // Neon
         Vec3::new(-2.0, 0.0, 0.0), // Sol
-        Vec3::new(0.0, -2.0, 0.0), // Dalmata
+        Vec3::new(0.0, 2.0, 0.0),  // Dalmata
         Vec3::new(0.0, 4.0, 0.0),  // Saturno
         Vec3::new(1.0, 2.0, 0.0),  // Kepler-452b
         Vec3::new(-1.0, 2.0, 0.0), // Tierra
@@ -299,16 +311,48 @@ fn main() {
     let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
 
+    // Configuración de la cámara
     let mut camera = Camera::new(
-        Vec3::new(0.0, 0.0, 5.0),
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 1.0, 0.0),
+        Vec3::new(0.0, 0.0, 10.0), // Posición inicial de la cámara
+        Vec3::new(0.0, 0.0, 0.0),  // Centro (Sol)
+        Vec3::new(0.0, 1.0, 0.0),  // Vector "arriba"
     );
+
+    let mut current_camera_target = 0; // Índice del planeta seleccionado
 
     while window.is_open() {
         if window.is_key_down(Key::Escape) {
             break;
         }
+
+        // Control de cámara con teclas numéricas
+        if window.is_key_down(Key::Key1) {
+            current_camera_target = 0; // Marte
+        } else if window.is_key_down(Key::Key2) {
+            current_camera_target = 1; // Neon
+        } else if window.is_key_down(Key::Key3) {
+            current_camera_target = 2; // Sol
+        } else if window.is_key_down(Key::Key4) {
+            current_camera_target = 3; // Dalmata
+        } else if window.is_key_down(Key::Key5) {
+            current_camera_target = 4; // Saturno
+        } else if window.is_key_down(Key::Key6) {
+            current_camera_target = 5; // Kepler-452b
+        } else if window.is_key_down(Key::Key7) {
+            current_camera_target = 6; // Tierra
+        }
+
+        // Asegúrate de que current_camera_target esté dentro del rango válido
+        if current_camera_target >= planet_orbits.len() {
+            current_camera_target = 0; // Regresar al valor por defecto (Marte)
+        }
+
+        // Actualizar la posición de la cámara al planeta seleccionado
+        camera.eye = Vec3::new(
+            planet_orbits[current_camera_target] * 1.5,
+            0.0,
+            5.0, // Mantener una altura constante
+        );
 
         handle_input(&window, &mut camera, &mut last_mouse_pos);
 
@@ -323,6 +367,14 @@ fn main() {
         let elapsed_time = start_time.elapsed().as_secs_f32();
 
         for i in 0..translations.len() {
+            // Movimiento orbital
+            if i != 2 && i < planet_orbits.len() {
+                // Saltar el Sol (i=2) para que no tenga movimiento orbital
+                let orbit_angle = elapsed_time * (0.1 + i as f32 * 0.05);
+                translations[i].x = planet_orbits[i] * orbit_angle.cos();
+                translations[i].y = planet_orbits[i] * orbit_angle.sin();
+            }
+
             rotations[i].y = elapsed_time * (0.1 + i as f32 * 0.05);
 
             let model_matrix = create_model_matrix(translations[i], scales[i], rotations[i]);
@@ -337,10 +389,8 @@ fn main() {
                 noise,
             };
 
-            // Renderizar el cometa
             if i == 4 {
-                // Renderizar el anillo adicional para el planeta con ID 4
-
+                // Renderizar el anillo adicional para el planeta con ID 4 (Saturno)
                 let ring_model_matrix = create_model_matrix(
                     translations[i], // Posición igual al planeta
                     scales[i] * 0.7, // Escala ajustada (1.5 veces el tamaño del planeta)
@@ -420,6 +470,22 @@ fn main() {
                     &vertex_arrays_comet,
                     comet_shader,
                 );
+            } else if i == 2 {
+                // Renderizar el Sol
+                let sun_translation = Vec3::new(0.0, 0.0, 0.0);
+                let sun_model_matrix =
+                    create_model_matrix(sun_translation, scales[i] * 1.5, Vec3::new(0.0, 0.0, 0.0));
+
+                let sun_uniforms = Uniforms {
+                    model_matrix: sun_model_matrix,
+                    view_matrix,
+                    projection_matrix,
+                    viewport_matrix,
+                    time: elapsed_time as u32,
+                    noise: create_noise_for_planet(i),
+                };
+
+                render(&mut framebuffer, &sun_uniforms, &vertex_arrays, sun_shader);
             } else {
                 // Renderizar los demás planetas normalmente
                 render(&mut framebuffer, &uniforms, &vertex_arrays, shaders[i]);
@@ -478,5 +544,15 @@ fn handle_input(window: &Window, camera: &mut Camera, last_mouse_pos: &mut (f32,
 
         // Actualizar la última posición del mouse
         *last_mouse_pos = (mouse_x as f32, mouse_y as f32);
+    }
+
+    // Controlar el zoom con el scroll del mouse
+    if let Some((scroll_x, scroll_y)) = window.get_scroll_wheel() {
+        // Scroll hacia arriba (zoom in) o abajo (zoom out)
+        let zoom_sensitivity = 0.1;
+        camera.eye.z -= scroll_y as f32 * zoom_sensitivity;
+
+        // Limitar la distancia mínima y máxima del zoom
+        camera.eye.z = camera.eye.z.clamp(2.0, 100.0); // Valores arbitrarios, ajustables según tu escena
     }
 }
