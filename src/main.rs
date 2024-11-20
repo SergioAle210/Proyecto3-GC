@@ -14,6 +14,7 @@ mod triangle;
 mod vertex;
 
 use camera::Camera;
+use fastnoise_lite::{FastNoiseLite, FractalType, NoiseType};
 use framebuffer::Framebuffer;
 use obj::Obj;
 use shaders::{fragment_shader, vertex_shader};
@@ -26,6 +27,55 @@ pub struct Uniforms {
     projection_matrix: Mat4,
     viewport_matrix: Mat4,
     time: u32,
+    noise: FastNoiseLite,
+}
+
+fn create_noise() -> FastNoiseLite {
+    create_cloud_noise()
+    // create_cell_noise()
+    // create_ground_noise()
+    // create_lava_noise()
+}
+
+fn create_cloud_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(1337);
+    noise.set_noise_type(Some(NoiseType::OpenSimplex2));
+    noise
+}
+
+fn create_cell_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(1337);
+    noise.set_noise_type(Some(NoiseType::Cellular));
+    noise.set_frequency(Some(0.1));
+    noise
+}
+
+fn create_ground_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(1337);
+
+    // Use FBm fractal type to layer multiple octaves of noise
+    noise.set_noise_type(Some(NoiseType::Cellular)); // Cellular noise for cracks
+    noise.set_fractal_type(Some(FractalType::FBm)); // Fractal Brownian Motion
+    noise.set_fractal_octaves(Some(5)); // More octaves = more detail
+    noise.set_fractal_lacunarity(Some(2.0)); // Lacunarity controls frequency scaling
+    noise.set_fractal_gain(Some(0.5)); // Gain controls amplitude scaling
+    noise.set_frequency(Some(0.05)); // Lower frequency for larger features
+
+    noise
+}
+
+fn create_lava_noise() -> FastNoiseLite {
+    let mut noise = FastNoiseLite::with_seed(42);
+
+    // Use FBm for multi-layered noise, giving a "turbulent" feel
+    noise.set_noise_type(Some(NoiseType::Perlin)); // Perlin noise for smooth, natural texture
+    noise.set_fractal_type(Some(FractalType::FBm)); // FBm for layered detail
+    noise.set_fractal_octaves(Some(6)); // High octaves for rich detail
+    noise.set_fractal_lacunarity(Some(2.0)); // Higher lacunarity = more contrast between layers
+    noise.set_fractal_gain(Some(0.5)); // Higher gain = more influence of smaller details
+    noise.set_frequency(Some(0.002)); // Low frequency = large features
+
+    noise
 }
 
 fn create_model_matrix(translation: Vec3, scale: f32, rotation: Vec3) -> Mat4 {
@@ -140,7 +190,7 @@ fn main() {
     let mut rotation1 = Vec3::new(0.0, 0.0, 0.0); // Para el tiefighter
     let mut scale1 = 1.0f32; // Para el tiefighter
 
-    let mut translation2 = Vec3::new(20.0, 0.0, 0.0); // Para el charizard, ajusta la posición
+    let mut translation2 = Vec3::new(2.0, 0.0, 0.0); // Para el charizard, ajusta la posición
     let mut rotation2 = Vec3::new(0.0, 0.0, 0.0); // Para el charizard
     let mut scale2 = 1.0f32; // Para el charizard
 
@@ -171,6 +221,7 @@ fn main() {
         handle_input(&window, &mut camera, &mut last_mouse_pos);
 
         framebuffer.clear();
+        let noise1 = create_noise();
 
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up);
         let projection_matrix =
@@ -189,6 +240,7 @@ fn main() {
             projection_matrix,
             viewport_matrix,
             time,
+            noise: noise1,
         };
 
         //framebuffer.set_current_color(0xFFDDDD);
@@ -202,6 +254,7 @@ fn main() {
         rotation2.y = elapsed_time; // Gira alrededor del eje Y en función del tiempo
 
         // Configurar uniforms para el charizard
+        let noise2 = create_noise();
         let model_matrix2 = create_model_matrix(translation2, scale2, rotation2);
         let uniforms2 = Uniforms {
             model_matrix: model_matrix2,
@@ -209,6 +262,7 @@ fn main() {
             projection_matrix,
             viewport_matrix,
             time,
+            noise: noise2,
         };
 
         framebuffer.set_current_color(0xFFAA00); // Un color diferente, si lo prefieres
