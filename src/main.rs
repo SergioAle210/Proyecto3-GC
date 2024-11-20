@@ -296,6 +296,8 @@ fn main() {
         comet_shader,          // Cometa
     ];
 
+    // OBJs
+
     //Luego hacer un array de modelos para manejar planetas, estrellas, etc.
     let obj = Obj::load("assets/models/sphere.obj").expect("Failed to load obj");
     let vertex_arrays = obj.get_vertex_array();
@@ -308,6 +310,11 @@ fn main() {
 
     let obj_comet = Obj::load("assets/models/sphere.obj").expect("Failed to load obj_comet");
     let vertex_arrays_comet = obj_comet.get_vertex_array();
+
+    // OBJ de mi nave
+    let obj_tie_fighter =
+        Obj::load("assets/models/tiefighter.obj").expect("Failed to load tiefigther.obj");
+    let vertex_arrays_tie_fighter = obj_tie_fighter.get_vertex_array();
 
     let start_time = Instant::now(); // Tiempo inicial para controlar la rotación
     let mut last_mouse_pos = (0.0, 0.0);
@@ -394,6 +401,36 @@ fn main() {
             create_viewport_matrix(framebuffer_width as f32, framebuffer_height as f32);
 
         let elapsed_time = start_time.elapsed().as_secs_f32();
+
+        // Calcular la posición de la nave
+        let direction = nalgebra_glm::normalize(&(camera.center - camera.eye));
+        let tie_fighter_position = camera.eye + direction * 2.0; // La nave estará a 2 unidades frente a la cámara
+
+        // Crear la matriz de modelo para la nave
+        let model_matrix_tie_fighter = create_model_matrix(
+            tie_fighter_position,     // Posición de la nave
+            0.1,                      // Escala de la nave
+            Vec3::new(0.0, 0.0, 0.0), // Rotación (animada)
+        );
+
+        let uniforms_tie_fighter = Uniforms {
+            model_matrix: model_matrix_tie_fighter,
+            view_matrix,
+            projection_matrix,
+            viewport_matrix,
+            time: elapsed_time as u32,
+            noise: create_noise(), // Opcional si se usa un shader con ruido
+        };
+
+        // Renderizar la nave
+        render(
+            &mut framebuffer,
+            &uniforms_tie_fighter,
+            &vertex_arrays_tie_fighter,
+            |fragment, uniforms| {
+                color::Color::new(224, 105, 22) // Color blanco para la nave
+            },
+        );
 
         for i in 0..translations.len() {
             // Movimiento orbital
