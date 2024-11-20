@@ -318,6 +318,8 @@ fn main() {
         Vec3::new(0.0, 1.0, 0.0),  // Vector "arriba"
     );
 
+    let mut should_update_camera_target = true;
+
     let mut current_camera_target = 0; // Índice del planeta seleccionado
 
     while window.is_open() {
@@ -328,31 +330,43 @@ fn main() {
         // Control de cámara con teclas numéricas
         if window.is_key_down(Key::Key1) {
             current_camera_target = 0; // Marte
+            should_update_camera_target = true;
         } else if window.is_key_down(Key::Key2) {
             current_camera_target = 1; // Neon
+            should_update_camera_target = true;
         } else if window.is_key_down(Key::Key3) {
             current_camera_target = 2; // Sol
+            should_update_camera_target = true;
         } else if window.is_key_down(Key::Key4) {
             current_camera_target = 3; // Dalmata
+            should_update_camera_target = true;
         } else if window.is_key_down(Key::Key5) {
             current_camera_target = 4; // Saturno
+            should_update_camera_target = true;
         } else if window.is_key_down(Key::Key6) {
             current_camera_target = 5; // Kepler-452b
+            should_update_camera_target = true;
         } else if window.is_key_down(Key::Key7) {
             current_camera_target = 6; // Tierra
+            should_update_camera_target = true;
         }
 
         // Asegúrate de que current_camera_target esté dentro del rango válido
         if current_camera_target >= planet_orbits.len() {
             current_camera_target = 0; // Regresar al valor por defecto (Marte)
+            should_update_camera_target = true;
         }
 
         // Actualizar la posición de la cámara al planeta seleccionado
-        camera.eye = Vec3::new(
-            planet_orbits[current_camera_target] * 1.5,
-            0.0,
-            5.0, // Mantener una altura constante
-        );
+        if should_update_camera_target {
+            camera.eye = Vec3::new(
+                planet_orbits[current_camera_target] * 1.5,
+                0.0,
+                5.0, // Mantener una altura constante
+            );
+            camera.center = Vec3::new(0.0, 0.0, 0.0); // Centro del sistema solar o planeta
+            should_update_camera_target = false; // Desactivar actualización automática
+        }
 
         handle_input(&window, &mut camera, &mut last_mouse_pos);
 
