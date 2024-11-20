@@ -19,9 +19,8 @@ use fastnoise_lite::{FastNoiseLite, FractalType, NoiseType};
 use framebuffer::Framebuffer;
 use obj::Obj;
 use shaders::{
-    cellular_shader, cloud_layer_shader, cloud_shader, combined_cellular_cloud_shader,
-    combined_shader, dalmata_shader, earth, earth_shader, fragment_shader, lava_shader,
-    moving_circles_shader, neon_light_shader, static_pattern_shader, vertex_shader,
+    cellular_shader, cloud_shader, combined_shader, dalmata_shader, earth, fragment_shader,
+    lava_shader, moving_circles_shader, neon_light_shader, static_pattern_shader, vertex_shader,
 };
 use triangle::triangle;
 use vertex::Vertex;

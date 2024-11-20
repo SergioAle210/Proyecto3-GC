@@ -41,17 +41,15 @@ pub fn vertex_shader(vertex: &Vertex, uniforms: &Uniforms) -> Vertex {
     }
 }
 
-pub fn fragment_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-    // random_color_shader(fragment, uniforms)
-    // black_and_white(fragment, uniforms)
-    dalmata_shader(fragment, uniforms)
-    // cloud_shader(fragment, uniforms)
-    // cellular_shader(fragment, uniforms)
-    // cracked_ground_shader(fragment, uniforms)
-    // lava_shader(fragment, uniforms)
+pub fn fragment_shader(
+    fragment: &Fragment,
+    uniforms: &Uniforms,
+    shader_fn: fn(&Fragment, &Uniforms) -> Color,
+) -> Color {
+    shader_fn(fragment, uniforms)
 }
 
-fn static_pattern_shader(fragment: &Fragment) -> Color {
+pub fn static_pattern_shader(fragment: &Fragment, _uniforms: &Uniforms) -> Color {
     let x = fragment.vertex_position.x;
     let y = fragment.vertex_position.y;
 
@@ -64,7 +62,7 @@ fn static_pattern_shader(fragment: &Fragment) -> Color {
     Color::new(r, g, b)
 }
 
-fn moving_circles_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn moving_circles_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let x = fragment.vertex_position.x;
     let y = fragment.vertex_position.y;
 
@@ -90,7 +88,7 @@ fn moving_circles_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 
 // Combined shader
 pub fn combined_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-    let base_color = static_pattern_shader(fragment);
+    let base_color = static_pattern_shader(fragment, uniforms);
     let circle_color = moving_circles_shader(fragment, uniforms);
 
     // Combine shaders: use circle color if it's not black, otherwise use base color
@@ -176,15 +174,12 @@ fn background_shader(_fragment: &Fragment) -> Color {
 }
 
 // Combined neon light shader
-pub fn neon_light_shader(fragment: &Fragment) -> Color {
+pub fn neon_light_shader(fragment: &Fragment, _uniforms: &Uniforms) -> Color {
     let background = background_shader(fragment);
     let glow = glow_shader(fragment);
     let core = core_shader(fragment);
 
-    // Blend the glow with the background using "screen" blend mode
     let blended_glow = background.blend_screen(&glow);
-
-    // Add the core on top using "add" blend mode
     blended_glow.blend_add(&core) * fragment.intensity
 }
 
@@ -218,7 +213,7 @@ fn black_and_white(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     black_or_white * fragment.intensity
 }
 
-fn dalmata_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn dalmata_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let zoom = 100.0;
     let ox = 0.0;
     let oy = 0.0;
@@ -242,10 +237,10 @@ fn dalmata_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     noise_color * fragment.intensity
 }
 
-fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-    let zoom = 100.0; // to move our values
+pub fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+    let zoom = 300.0; // to move our values
     let ox = 100.0; // offset x in the noise map
-    let oy = 100.0;
+    let oy = 10.0;
     let x = fragment.vertex_position.x;
     let y = fragment.vertex_position.y;
     let t = uniforms.time as f32 * 0.5;
@@ -269,8 +264,8 @@ fn cloud_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     noise_color * fragment.intensity
 }
 
-fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
-    let zoom = 30.0; // Zoom factor to adjust the scale of the cell pattern
+pub fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+    let zoom = 300.0; // Zoom factor to adjust the scale of the cell pattern
     let ox = 50.0; // Offset x in the noise map
     let oy = 50.0; // Offset y in the noise map
     let x = fragment.vertex_position.x;
@@ -286,7 +281,7 @@ fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let cell_color_1 = Color::new(85, 107, 47); // Dark olive green
     let cell_color_2 = Color::new(124, 252, 0); // Light green
     let cell_color_3 = Color::new(34, 139, 34); // Forest green
-    let cell_color_4 = Color::new(173, 255, 47); // Yellow green
+    let cell_color_4 = Color::new(39, 101, 167); // Yellow green
 
     // Use the noise value to assign a different color to each cell
     let final_color = if cell_noise_value < 0.15 {
@@ -303,7 +298,7 @@ fn cellular_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     final_color * fragment.intensity
 }
 
-fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+pub fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     // Base colors for the lava effect
     let bright_color = Color::new(255, 240, 0); // Bright orange (lava-like)
     let dark_color = Color::new(130, 20, 0); // Darker red-orange
@@ -341,4 +336,54 @@ fn lava_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
     let color = dark_color.lerp(&bright_color, noise_value);
 
     color * fragment.intensity
+}
+
+pub fn earth(fragment: &Fragment, uniforms: &Uniforms) -> Color {
+    let zoom = 30.0; // Zoom factor to adjust the scale of the cell pattern
+    let base_offset = 50.0; // Base offset in the noise map
+    let x = fragment.vertex_position.x;
+    let y = fragment.vertex_position.y;
+
+    // Desplazamiento dinámico en el tiempo para el efecto de movimiento
+    let t = uniforms.time as f32 * 0.5; // Velocidad del movimiento
+    let dynamic_offset_x = base_offset + t.sin() * 10.0; // Movimiento sinusoidal en x
+    let dynamic_offset_y = base_offset + t.cos() * 10.0; // Movimiento sinusoidal en y
+
+    // Use a cellular noise function to create the plant cell pattern
+    let cell_noise_value = uniforms
+        .noise
+        .get_noise_2d(x * zoom + dynamic_offset_x, y * zoom + dynamic_offset_y)
+        .abs();
+
+    // Define different shades of green for the plant cells
+    let base_color = if cell_noise_value < 0.15 {
+        Color::new(85, 107, 47) // Dark olive green
+    } else if cell_noise_value < 0.7 {
+        Color::new(2, 100, 177) // Celeste
+    } else if cell_noise_value < 0.75 {
+        Color::new(85, 107, 47) // Forest green
+    } else {
+        Color::new(133, 98, 57) // Cafe
+    };
+
+    // Add cloud effect with blending
+    let cloud_zoom = 100.0; // to move our values
+    let cloud_ox = 100.0; // offset x in the noise map
+    let cloud_oy = 100.0;
+    let cloud_noise_value = uniforms
+        .noise
+        .get_noise_2d(x * cloud_zoom + cloud_ox + t, y * cloud_zoom + cloud_oy);
+
+    let cloud_threshold = 0.5; // Adjust this value to change cloud density
+    let cloud_color = Color::new(255, 255, 255); // White for clouds
+
+    let blended_color = if cloud_noise_value > cloud_threshold {
+        // Blend the cloud color with the base color using a blending factor to keep the base visible
+        base_color.blend_normal(&cloud_color) * 0.5 + base_color * 0.5
+    } else {
+        base_color
+    };
+
+    // Adjust intensity to simulate lighting effects (optional)
+    blended_color * fragment.intensity
 }
