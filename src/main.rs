@@ -250,6 +250,11 @@ fn is_visible(position: &Vec3, view_matrix: &Mat4, projection_matrix: &Mat4) -> 
     x_ndc >= -1.0 && x_ndc <= 1.0 && y_ndc >= -1.0 && y_ndc <= 1.0 && z_ndc >= -1.0 && z_ndc <= 1.0
 }
 
+fn check_collision(position: &Vec3, planet_position: &Vec3, planet_radius: f32) -> bool {
+    let distance = nalgebra_glm::distance(position, planet_position);
+    distance < planet_radius
+}
+
 fn main() {
     let window_width = 1300;
     let window_height = 600;
@@ -418,6 +423,20 @@ fn main() {
             &mut camera,
             &mut last_mouse_pos,
         );
+
+        // Verificar colisiones para la nave
+        for (i, planet_position) in translations.iter().enumerate() {
+            let planet_radius = scales[i] + 0.5; // Aumentar ligeramente el radio para mayor seguridad
+            if check_collision(&tie_fighter_position, planet_position, planet_radius) {
+                // Ajustar la posición de la nave para evitar la colisión
+                let direction = nalgebra_glm::normalize(&(tie_fighter_position - planet_position));
+                tie_fighter_position = *planet_position + direction * (planet_radius + 0.05);
+                //println!(
+                //    "Colisión detectada con el planeta {}. Posición de la nave ajustada.",
+                //    i
+                //);
+            }
+        }
 
         // Actualizar la posición y orientación de la cámara para seguir la nave
         camera.eye = tie_fighter_position - tie_fighter_direction * 3.0 + tie_fighter_up * 2.0;
