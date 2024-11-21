@@ -478,3 +478,16 @@ pub fn sun_shader(fragment: &Fragment, uniforms: &Uniforms) -> Color {
 
     color * fragment.intensity // Ajustar por intensidad del fragmento
 }
+
+pub fn neon_normal_map_shader(fragment: &Fragment, _uniforms: &Uniforms) -> Color {
+    // Obtener la normal del fragmento
+    let normal = fragment.normal;
+
+    // Convertir la normal a valores RGB utilizando el rango [-1, 1] -> [0, 255]
+    let r = ((normal.x + 1.0) * 0.5 * 255.0) as u8;
+    let g = ((normal.y + 1.0) * 0.5 * 255.0) as u8;
+    let b = ((normal.z + 1.0) * 0.5 * 255.0) as u8;
+
+    // Crear el color basado en el mapa normal
+    Color::new(r, g, b)
+}

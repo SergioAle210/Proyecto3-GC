@@ -8,7 +8,6 @@ mod camera;
 mod color;
 mod fragment;
 mod framebuffer;
-// mod line;
 mod obj;
 mod shaders;
 mod triangle;
@@ -22,7 +21,7 @@ use obj::Obj;
 use shaders::{
     cellular_shader, cloud_shader, combined_shader, comet_shader, dalmata_shader, earth,
     fragment_shader, lava_shader, luna_shader, moving_circles_shader, neon_light_shader,
-    static_pattern_shader, sun_shader, vertex_shader,
+    neon_normal_map_shader, static_pattern_shader, sun_shader, vertex_shader,
 };
 use triangle::triangle;
 use vertex::Vertex;
@@ -299,14 +298,14 @@ fn main() {
     let mut rotations = vec![Vec3::new(0.0, 0.0, 0.0); 8];
     let scales = vec![1.0f32; 8];
     let shaders = vec![
-        lava_shader,           // Marte
-        neon_light_shader,     // Neon
-        static_pattern_shader, // Sol
-        dalmata_shader,        // Dalmata
-        combined_shader,       // Saturno
-        cellular_shader,       // Kepler-452b
-        earth,                 // Tierra
-        comet_shader,          // Cometa
+        lava_shader,            // Marte
+        neon_normal_map_shader, // Neon
+        static_pattern_shader,  // Sol
+        dalmata_shader,         // Dalmata
+        combined_shader,        // Saturno
+        cellular_shader,        // Kepler-452b
+        earth,                  // Tierra
+        comet_shader,           // Cometa
     ];
 
     // OBJs
@@ -479,7 +478,15 @@ fn main() {
                     noise,
                 };
 
-                if i == 4 && is_visible(&translations[i], &view_matrix, &projection_matrix) {
+                if i == 1 && is_visible(&translations[i], &view_matrix, &projection_matrix) {
+                    // Renderizar Neon con el shader que usa el mapa normal
+                    render(
+                        &mut framebuffer,
+                        &uniforms,
+                        &vertex_arrays,
+                        neon_normal_map_shader,
+                    );
+                } else if i == 4 && is_visible(&translations[i], &view_matrix, &projection_matrix) {
                     // Renderizar el anillo adicional para el planeta con ID 4 (Saturno)
                     let ring_model_matrix = create_model_matrix(
                         translations[i], // Posición igual al planeta
