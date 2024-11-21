@@ -7,8 +7,15 @@ Este proyecto es un renderizador 3D simple basado en Rust. Utiliza la librería 
 - Renderizado de modelos 3D a partir de archivos `.obj`.
 - Iluminación estática direccional y ambiental.
 - Transformaciones como rotación, escalado y traslación.
+- Nave espacial interactiva con controles personalizados.
+- Simulación del Sistema Solar con:
+  - 6 planetas con shaders únicos.
+  - Una luna orbitando la Tierra.
+  - Un cometa con trayectoria dinámica.
+  - Representación de órbitas planetarias.
+  - Skybox para el fondo con estrellas.
 - Interacción con la cámara para orbitar alrededor de los modelos.
-- Control de zoom mediante teclado.
+- Control de zoom mediante teclado y mouse.
 
 ## Requisitos
 
@@ -23,6 +30,7 @@ Además, el proyecto utiliza las siguientes dependencias, que se especifican en 
 minifb = "0.27.0"
 nalgebra-glm = "0.19.0"
 tobj = "4.0.2"
+fastnoise-lite = "0.8.0"
 ```
 
 #### Estructura del Proyecto
@@ -33,7 +41,8 @@ tobj = "4.0.2"
 - `framebuffer.rs`: Implementa el framebuffer, donde se almacenan los píxeles renderizados.
 - `line.rs`: Algoritmo para dibujar líneas.
 - `obj.rs`: Carga archivos `.obj` y los convierte en un array de vértices.
-- `shaders.rs`: Define el shader de vértices, que transforma los vértices usando las matrices de transformación.
+- `shaders.rs`: Define los shaders para personalizar la apariencia de los objetos.
+- `texture.rs`: Carga y gestiona texturas aplicadas a los modelos.
 - `triangle.rs`: Implementa la rasterización de triángulos y la aplicación de iluminación.
 - `vertex.rs`: Define la estructura de un vértice.
 
@@ -76,19 +85,24 @@ Para ejecutar el renderizador en Linux, usa el siguiente comando en tu terminal:
 
 Ambos archivos (tanto `run.bat` como `run.sh`) cambian automáticamente al directorio donde están ubicados y ejecutan el proyecto usando `cargo run --release`.
 
-Esto abrirá una ventana donde se renderizarán dos modelos 3D: un `tiefighter.obj` y un `charizard.obj`. Ambos modelos rotan alrededor de su eje Y y están iluminados por una fuente de luz direccional.
+Esto abrirá una ventana donde se renderizarán los modelos 3D y se interactuará con el entorno.
 
 ### 4. Controles de cámara
 
-Puedes interactuar con la cámara utilizando las siguientes teclas:
+#### Controles
 
-- `W`: Acercar la cámara (zoom in).
-- `S`: Alejar la cámara (zoom out).
-- `A`: Rotar la cámara a la izquierda.
-- `D`: Rotar la cámara a la derecha.
-- `Q`: Elevar la cámara.
-- `E`: Bajar la cámara.
 - `ESC`: Salir del programa.
+
+#### Controles de la nave
+
+- `W`: Rotar hacia arriba.
+- `S`: Rotar hacia abajo.
+- `A`: Rotar a la izquierda.
+- `D`: Rotar a la derecha.
+- **Flecha `↑`:** Mover la nave hacia adelante.
+- **Flecha `↓`:** Mover la nave hacia atrás.
+- **Clic derecho**: Permite controlar la orientación de la nave moviendo el mouse.
+- **Scroll del mouse**: Ajusta la posición relativa de la cámara respecto a la nave (zoom in/out).
 
 ### 5. Modelos 3D
 
@@ -116,6 +130,25 @@ El siguiente gif es un ejemplo visual de como se ve el programa luego de ejecuta
 - 1 cometa que esta orbitando por todo el sistema solar (con forma de árbol de navidad, porque ya se acerca la fecha)
 
 ![](https://github.com/SergioAle210/Proyecto3-GC/blob/main/assets/videos/Laboratorio4.gif)
+
+# Proyecto final - Space Travel
+
+El siguiente gif es un ejemplo visual de cómo se ve el programa luego de ejecutar los cambios del nuevo programa:
+
+- 6 Planetas donde cada uno tiene un shader diferente.
+- 1 Luna que orbita alrededor del planeta Tierra.
+- 1 Sol.
+- 1 Cometa que está orbitando por todo el sistema solar (con forma de árbol de Navidad, porque ya se acerca la fecha).
+- Cuenta con las órbitas de cada planeta.
+- Representación de estrellas en el fondo mediante un Skybox.
+- Nave interactiva que se mueve según las teclas presionadas.
+
+![](https://github.com/SergioAle210/Proyecto3-GC/blob/main/assets/videos/ProyectoFinal.gif)
+
+## Notas importantes:
+
+- La funcionalidad de la nave permite explorar el sistema solar, evitando colisiones con planetas y ajustando la posición automáticamente.
+- Los shaders aplicados son configurados dinámicamente para cada objeto en el sistema.
 
 ## Licencia
 
