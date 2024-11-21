@@ -523,7 +523,7 @@ fn main() {
             &mut framebuffer,
             &uniforms_tie_fighter,
             &vertex_arrays_tie_fighter,
-            |_, _| color::Color::new(39, 101, 167),
+            |_, _| color::Color::new(165, 165, 165),
         );
 
         for i in 0..translations.len() {
@@ -812,7 +812,7 @@ fn handle_tie_fighter_input(
         let dx = mouse_x as f32 - last_mouse_pos.0;
         let dy = mouse_y as f32 - last_mouse_pos.1;
 
-        if window.get_mouse_down(minifb::MouseButton::Right) {
+        if window.get_mouse_down(minifb::MouseButton::Left) {
             let right = nalgebra_glm::cross(&direction, &up).normalize();
 
             // Aplicar rotación pitch (vertical)
