@@ -453,7 +453,7 @@ fn main() {
             &mut framebuffer,
             &uniforms_tie_fighter,
             &vertex_arrays_tie_fighter,
-            |fragment, uniforms| color::Color::new(39, 101, 167),
+            |_, _| color::Color::new(39, 101, 167),
         );
 
         for i in 0..translations.len() {
@@ -560,7 +560,7 @@ fn main() {
                         &vertex_arrays_comet,
                         comet_shader,
                     );
-                } else if i == 2 {
+                } else if i == 2 && is_visible(&translations[i], &view_matrix, &projection_matrix) {
                     // Renderizar el Sol
                     let sun_translation = Vec3::new(0.0, 0.0, 0.0);
                     let sun_model_matrix = create_model_matrix(
