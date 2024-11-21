@@ -263,13 +263,13 @@ fn main() {
 
     // Posiciones iniciales en el plano eclíptico
     let mut planet_orbits = vec![
-        2.0, // Marte
-        3.0, // Neon
-        4.0, // Sol (solo referencia para mantener alineación)
-        5.0, // Dalmata
-        6.0, // Saturno
-        7.0, // Kepler-452b
-        8.0, // Tierra
+        4.0,  // Marte
+        6.0,  // Neon
+        8.0,  // Sol (solo referencia para mantener alineación)
+        10.0, // Dalmata
+        12.0, // Saturno
+        14.0, // Kepler-452b
+        16.0, // Tierra
     ];
 
     let mut translations = vec![
@@ -326,9 +326,9 @@ fn main() {
 
     // Configuración de la cámara
     let mut camera = Camera::new(
-        Vec3::new(0.0, 0.0, 10.0), // Posición inicial de la cámara
-        Vec3::new(0.0, 0.0, 0.0),  // Centro (Sol)
-        Vec3::new(0.0, 1.0, 0.0),  // Vector "arriba"
+        Vec3::new(0.0, 0.0, 5.0), // Posición inicial de la cámara
+        Vec3::new(0.0, 0.0, 0.0), // Centro (Sol)
+        Vec3::new(0.0, 1.0, 0.0), // Vector "arriba"
     );
 
     let mut should_update_camera_target = false;
@@ -395,7 +395,7 @@ fn main() {
             should_update_camera_target = false; // Actualización completa
         }
 
-        handle_input(&window, &mut camera, &mut last_mouse_pos);
+        //handle_input(&window, &mut camera, &mut last_mouse_pos);
 
         // Manejar los controles de la nave
         handle_tie_fighter_input(
@@ -403,10 +403,12 @@ fn main() {
             &mut tie_fighter_position,
             &mut tie_fighter_direction,
             &mut tie_fighter_up,
+            &mut camera,
+            &mut last_mouse_pos,
         );
 
         // Actualizar la posición y orientación de la cámara para seguir la nave
-        camera.eye = tie_fighter_position - tie_fighter_direction * 5.0 + tie_fighter_up * 2.0;
+        camera.eye = tie_fighter_position - tie_fighter_direction * 3.0 + tie_fighter_up * 2.0;
         camera.center = tie_fighter_position;
         camera.up = tie_fighter_up;
 
@@ -444,10 +446,9 @@ fn main() {
         for i in 0..translations.len() {
             // Movimiento orbital
             if i != 2 && i < planet_orbits.len() {
-                // Saltar el Sol (i=2) para que no tenga movimiento orbital
                 let orbit_angle = elapsed_time * (0.1 + i as f32 * 0.05);
-                translations[i].x = planet_orbits[i] * orbit_angle.cos();
-                translations[i].y = planet_orbits[i] * orbit_angle.sin();
+                translations[i].x = planet_orbits[i] * 1.5 * orbit_angle.cos(); // Factor 1.5 para separarlos más
+                translations[i].y = planet_orbits[i] * 1.5 * orbit_angle.sin(); // Factor 1.5 para separarlos más
             }
 
             rotations[i].y = elapsed_time * (0.1 + i as f32 * 0.05);
@@ -653,17 +654,20 @@ fn calculate_sphere_radius(vertices: &[Vertex]) -> f32 {
     max_distance
 }
 
-/// Manejar controles de la nave
 fn handle_tie_fighter_input(
     window: &Window,
     position: &mut Vec3,
     direction: &mut Vec3,
     up: &mut Vec3,
+    camera: &mut Camera,
+    last_mouse_pos: &mut (f32, f32),
 ) {
     let speed = 0.5; // Velocidad de la nave
     let rotation_speed = 0.05; // Velocidad de rotación
+    let sensitivity = 0.005; // Sensibilidad del mouse
+    let zoom_sensitivity = 1.0; // Sensibilidad del zoom
 
-    // Movimiento adelante/atrás
+    // Movimiento adelante/atrás de la nave
     if window.is_key_down(Key::Up) {
         *position += *direction * speed; // Avanzar en la dirección actual
     }
@@ -671,21 +675,21 @@ fn handle_tie_fighter_input(
         *position -= *direction * speed; // Retroceder en la dirección actual
     }
 
-    // Rotación hacia arriba/abajo (pitch)
+    // Rotación con teclas hacia arriba/abajo (pitch)
     if window.is_key_down(Key::T) {
-        let right = nalgebra_glm::cross(&direction, &up).normalize(); // Vector hacia la derecha
+        let right = nalgebra_glm::cross(&direction, &up).normalize();
         let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &right);
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
         *up = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(up)));
     }
     if window.is_key_down(Key::G) {
-        let right = nalgebra_glm::cross(&direction, &up).normalize(); // Vector hacia la derecha
+        let right = nalgebra_glm::cross(&direction, &up).normalize();
         let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &right);
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
         *up = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(up)));
     }
 
-    // Rotación hacia los lados (yaw)
+    // Rotación con teclas hacia los lados (yaw)
     if window.is_key_down(Key::F) {
         let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &up.normalize());
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
@@ -693,5 +697,41 @@ fn handle_tie_fighter_input(
     if window.is_key_down(Key::H) {
         let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &up.normalize());
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
+    }
+
+    // Rotación con clic derecho y movimiento del mouse
+    if let Some((mouse_x, mouse_y)) = window.get_mouse_pos(minifb::MouseMode::Discard) {
+        let dx = mouse_x as f32 - last_mouse_pos.0;
+        let dy = mouse_y as f32 - last_mouse_pos.1;
+
+        if window.get_mouse_down(minifb::MouseButton::Right) {
+            let right = nalgebra_glm::cross(&direction, &up).normalize();
+
+            // Aplicar rotación pitch (vertical)
+            let pitch_rotation = nalgebra_glm::rotation(-dy * sensitivity, &right);
+            *direction = nalgebra_glm::normalize(&(pitch_rotation.transform_vector(direction)));
+            *up = nalgebra_glm::normalize(&(pitch_rotation.transform_vector(up)));
+
+            // Aplicar rotación yaw (horizontal)
+            let yaw_rotation = nalgebra_glm::rotation(-dx * sensitivity, &up.normalize());
+            *direction = nalgebra_glm::normalize(&(yaw_rotation.transform_vector(direction)));
+        }
+
+        // Actualizar la última posición del mouse
+        *last_mouse_pos = (mouse_x as f32, mouse_y as f32);
+    }
+
+    // Controlar el zoom con el scroll del mouse
+    if let Some((_, scroll_y)) = window.get_scroll_wheel() {
+        let direction_to_center = (camera.center - camera.eye).normalize();
+        camera.eye += direction_to_center * (scroll_y as f32 * zoom_sensitivity);
+
+        // Limitar la distancia mínima y máxima del zoom
+        let distance = nalgebra_glm::distance(&camera.eye, &camera.center);
+        if distance < 2.0 {
+            camera.eye = camera.center - direction_to_center * 2.0;
+        } else if distance > 100.0 {
+            camera.eye = camera.center - direction_to_center * 100.0;
+        }
     }
 }
