@@ -82,4 +82,35 @@ impl Framebuffer {
     pub fn to_u32_buffer(&self) -> Vec<u32> {
         self.buffer.iter().map(|color| color.to_hex()).collect()
     }
+
+    pub fn draw_line(&mut self, x0: usize, y0: usize, x1: usize, y1: usize, color: u32) {
+        let mut x0 = x0 as isize;
+        let mut y0 = y0 as isize;
+        let x1 = x1 as isize;
+        let y1 = y1 as isize;
+
+        let dx = (x1 - x0).abs();
+        let dy = (y1 - y0).abs();
+        let sx = if x0 < x1 { 1 } else { -1 };
+        let sy = if y0 < y1 { 1 } else { -1 };
+        let mut err = if dx > dy { dx } else { -dy } / 2;
+
+        loop {
+            if x0 >= 0 && x0 < self.width as isize && y0 >= 0 && y0 < self.height as isize {
+                self.point_with_color(x0 as usize, y0 as usize, Color::from_hex(color));
+            }
+            if x0 == x1 && y0 == y1 {
+                break;
+            }
+            let e2 = err;
+            if e2 > -dx {
+                err -= dy;
+                x0 += sx;
+            }
+            if e2 < dy {
+                err += dx;
+                y0 += sy;
+            }
+        }
+    }
 }

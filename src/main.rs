@@ -255,6 +255,41 @@ fn check_collision(position: &Vec3, planet_position: &Vec3, planet_radius: f32) 
     distance < planet_radius
 }
 
+fn render_orbit(
+    framebuffer: &mut Framebuffer,
+    center: Vec3,
+    radius: f32,
+    segments: usize,
+    view_matrix: &Mat4,
+    projection_matrix: &Mat4,
+) {
+    let mut points = Vec::new();
+    for i in 0..segments {
+        let angle = 2.0 * PI * i as f32 / segments as f32;
+        let x = center.x + radius * angle.cos();
+        let y = center.y + radius * angle.sin();
+        points.push(Vec3::new(x, y, center.z));
+    }
+
+    for i in 0..segments {
+        let start = points[i];
+        let end = points[(i + 1) % segments];
+        let start_ndc = projection_matrix * view_matrix * Vec4::new(start.x, start.y, start.z, 1.0);
+        let end_ndc = projection_matrix * view_matrix * Vec4::new(end.x, end.y, end.z, 1.0);
+
+        let start_ndc = start_ndc / start_ndc.w;
+        let end_ndc = end_ndc / end_ndc.w;
+
+        framebuffer.draw_line(
+            ((start_ndc.x + 1.0) * framebuffer.width as f32 * 0.5) as usize,
+            ((1.0 - start_ndc.y) * framebuffer.height as f32 * 0.5) as usize,
+            ((end_ndc.x + 1.0) * framebuffer.width as f32 * 0.5) as usize,
+            ((1.0 - end_ndc.y) * framebuffer.height as f32 * 0.5) as usize,
+            0xFFFFFF, // Color blanco para las órbitas
+        );
+    }
+}
+
 fn main() {
     let window_width = 1300;
     let window_height = 600;
@@ -485,10 +520,22 @@ fn main() {
 
         for i in 0..translations.len() {
             // Movimiento orbital
-            if i != 2 && i < planet_orbits.len() {
+            if i != 2
+                && i < planet_orbits.len()
+                && is_visible(&translations[i], &view_matrix, &projection_matrix)
+            {
                 let orbit_angle = elapsed_time * (0.1 + i as f32 * 0.05);
                 translations[i].x = planet_orbits[i] * 1.5 * orbit_angle.cos(); // Factor 1.5 para separarlos más
                 translations[i].y = planet_orbits[i] * 1.5 * orbit_angle.sin(); // Factor 1.5 para separarlos más
+
+                render_orbit(
+                    &mut framebuffer,
+                    Vec3::new(0.0, 0.0, 0.0), // Centro de la órbita (el Sol)
+                    planet_orbits[i] * 1.5,   // Radio de la órbita
+                    100,                      // Número de segmentos para el círculo
+                    &view_matrix,
+                    &projection_matrix,
+                );
             }
 
             rotations[i].y = elapsed_time * (0.1 + i as f32 * 0.05);
