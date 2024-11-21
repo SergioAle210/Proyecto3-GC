@@ -1,6 +1,6 @@
 use fragment::Fragment;
 use minifb::{Key, Window, WindowOptions};
-use nalgebra_glm::{look_at, perspective, Mat4, Vec3};
+use nalgebra_glm::{look_at, perspective, Mat4, Vec3, Vec4};
 use std::f32::consts::PI;
 use std::time::{Duration, Instant};
 
@@ -236,7 +236,20 @@ fn create_viewport_matrix(width: f32, height: f32) -> Mat4 {
     )
 }
 
-//view port transformation agregar el 128
+fn is_visible(position: &Vec3, view_matrix: &Mat4, projection_matrix: &Mat4) -> bool {
+    // Transformar la posición del objeto al espacio de clip
+    let clip_space_position =
+        projection_matrix * view_matrix * Vec4::new(position.x, position.y, position.z, 1.0);
+    let w = clip_space_position.w;
+
+    // Normalizar las coordenadas (clip space -> NDC)
+    let x_ndc = clip_space_position.x / w;
+    let y_ndc = clip_space_position.y / w;
+    let z_ndc = clip_space_position.z / w;
+
+    // Verificar si está dentro del rango [-1, 1]
+    x_ndc >= -1.0 && x_ndc <= 1.0 && y_ndc >= -1.0 && y_ndc <= 1.0 && z_ndc >= -1.0 && z_ndc <= 1.0
+}
 
 fn main() {
     let window_width = 1300;
@@ -453,118 +466,123 @@ fn main() {
 
             rotations[i].y = elapsed_time * (0.1 + i as f32 * 0.05);
 
-            let model_matrix = create_model_matrix(translations[i], scales[i], rotations[i]);
-            let noise = create_noise_for_planet(i);
+            if is_visible(&translations[i], &view_matrix, &projection_matrix) {
+                let model_matrix = create_model_matrix(translations[i], scales[i], rotations[i]);
+                let noise = create_noise_for_planet(i);
 
-            let uniforms = Uniforms {
-                model_matrix,
-                view_matrix,
-                projection_matrix,
-                viewport_matrix,
-                time: elapsed_time as u32,
-                noise,
-            };
-
-            if i == 4 {
-                // Renderizar el anillo adicional para el planeta con ID 4 (Saturno)
-                let ring_model_matrix = create_model_matrix(
-                    translations[i], // Posición igual al planeta
-                    scales[i] * 0.7, // Escala ajustada (1.5 veces el tamaño del planeta)
-                    rotations[i],    // Rotación igual al planeta
-                );
-
-                let noise_ring = create_noise_for_planet(i);
-
-                let ring_uniforms = Uniforms {
-                    model_matrix: ring_model_matrix, // Matriz específica del anillo
+                let uniforms = Uniforms {
+                    model_matrix,
                     view_matrix,
                     projection_matrix,
                     viewport_matrix,
                     time: elapsed_time as u32,
-                    noise: noise_ring,
+                    noise,
                 };
 
-                render(
-                    &mut framebuffer,
-                    &ring_uniforms,
-                    &vertex_arrays_ring,
-                    shaders[i],
-                );
-            } else if i == 6 {
-                // Renderizar la Tierra
-                render(&mut framebuffer, &uniforms, &vertex_arrays, earth);
+                if i == 4 && is_visible(&translations[i], &view_matrix, &projection_matrix) {
+                    // Renderizar el anillo adicional para el planeta con ID 4 (Saturno)
+                    let ring_model_matrix = create_model_matrix(
+                        translations[i], // Posición igual al planeta
+                        scales[i] * 0.7, // Escala ajustada (1.5 veces el tamaño del planeta)
+                        rotations[i],    // Rotación igual al planeta
+                    );
 
-                // Calcular la órbita de la luna
-                let moon_orbit_radius = 0.7; // Radio de la órbita
-                let moon_speed = 0.5; // Velocidad de la órbita
-                let moon_angle = elapsed_time * moon_speed;
+                    let noise_ring = create_noise_for_planet(i);
 
-                let moon_x = translations[i].x + moon_orbit_radius * moon_angle.cos();
-                let moon_y = translations[i].y + moon_orbit_radius * moon_angle.sin();
+                    let ring_uniforms = Uniforms {
+                        model_matrix: ring_model_matrix, // Matriz específica del anillo
+                        view_matrix,
+                        projection_matrix,
+                        viewport_matrix,
+                        time: elapsed_time as u32,
+                        noise: noise_ring,
+                    };
 
-                let moon_translation = Vec3::new(moon_x, moon_y, 0.0);
-                let moon_model_matrix =
-                    create_model_matrix(moon_translation, scales[i] * 0.3, rotations[i]);
+                    render(
+                        &mut framebuffer,
+                        &ring_uniforms,
+                        &vertex_arrays_ring,
+                        shaders[i],
+                    );
+                } else if i == 6 && is_visible(&translations[i], &view_matrix, &projection_matrix) {
+                    // Renderizar la Tierra
+                    render(&mut framebuffer, &uniforms, &vertex_arrays, earth);
 
-                let moon_uniforms = Uniforms {
-                    model_matrix: moon_model_matrix,
-                    view_matrix,
-                    projection_matrix,
-                    viewport_matrix,
-                    time: elapsed_time as u32,
-                    noise: create_noise_for_planet(7),
-                };
+                    // Calcular la órbita de la luna
+                    let moon_orbit_radius = 0.7; // Radio de la órbita
+                    let moon_speed = 0.5; // Velocidad de la órbita
+                    let moon_angle = elapsed_time * moon_speed;
 
-                // Renderizar la Luna
-                render(
-                    &mut framebuffer,
-                    &moon_uniforms,
-                    &vertex_arrays_moon,
-                    luna_shader,
-                );
-            } else if i == 7 {
-                // Renderizar el cometa
-                let comet_x = elapsed_time.sin() * 4.0; // Movimiento en el eje X
-                let comet_y = elapsed_time.cos() * 2.0; // Movimiento en el eje Y
-                let comet_translation = Vec3::new(comet_x, comet_y, 0.0);
+                    let moon_x = translations[i].x + moon_orbit_radius * moon_angle.cos();
+                    let moon_y = translations[i].y + moon_orbit_radius * moon_angle.sin();
 
-                let comet_model_matrix =
-                    create_model_matrix(comet_translation, 0.2, Vec3::new(0.0, 0.0, 0.0));
+                    let moon_translation = Vec3::new(moon_x, moon_y, 0.0);
+                    let moon_model_matrix =
+                        create_model_matrix(moon_translation, scales[i] * 0.3, rotations[i]);
 
-                let comet_uniforms = Uniforms {
-                    model_matrix: comet_model_matrix,
-                    view_matrix,
-                    projection_matrix,
-                    viewport_matrix,
-                    time: elapsed_time as u32,
-                    noise: create_noise_for_planet(i),
-                };
+                    let moon_uniforms = Uniforms {
+                        model_matrix: moon_model_matrix,
+                        view_matrix,
+                        projection_matrix,
+                        viewport_matrix,
+                        time: elapsed_time as u32,
+                        noise: create_noise_for_planet(7),
+                    };
 
-                render(
-                    &mut framebuffer,
-                    &comet_uniforms,
-                    &vertex_arrays_comet,
-                    comet_shader,
-                );
-            } else if i == 2 {
-                // Renderizar el Sol
-                let sun_translation = Vec3::new(0.0, 0.0, 0.0);
-                let sun_model_matrix =
-                    create_model_matrix(sun_translation, scales[i] * 1.5, Vec3::new(0.0, 0.0, 0.0));
+                    // Renderizar la Luna
+                    render(
+                        &mut framebuffer,
+                        &moon_uniforms,
+                        &vertex_arrays_moon,
+                        luna_shader,
+                    );
+                } else if i == 7 && is_visible(&translations[i], &view_matrix, &projection_matrix) {
+                    // Renderizar el cometa
+                    let comet_x = elapsed_time.sin() * 4.0; // Movimiento en el eje X
+                    let comet_y = elapsed_time.cos() * 2.0; // Movimiento en el eje Y
+                    let comet_translation = Vec3::new(comet_x, comet_y, 0.0);
 
-                let sun_uniforms = Uniforms {
-                    model_matrix: sun_model_matrix,
-                    view_matrix,
-                    projection_matrix,
-                    viewport_matrix,
-                    time: elapsed_time as u32,
-                    noise: create_noise_for_planet(i),
-                };
+                    let comet_model_matrix =
+                        create_model_matrix(comet_translation, 0.2, Vec3::new(0.0, 0.0, 0.0));
 
-                render(&mut framebuffer, &sun_uniforms, &vertex_arrays, sun_shader);
-            } else {
-                // Renderizar los demás planetas normalmente
-                render(&mut framebuffer, &uniforms, &vertex_arrays, shaders[i]);
+                    let comet_uniforms = Uniforms {
+                        model_matrix: comet_model_matrix,
+                        view_matrix,
+                        projection_matrix,
+                        viewport_matrix,
+                        time: elapsed_time as u32,
+                        noise: create_noise_for_planet(i),
+                    };
+
+                    render(
+                        &mut framebuffer,
+                        &comet_uniforms,
+                        &vertex_arrays_comet,
+                        comet_shader,
+                    );
+                } else if i == 2 {
+                    // Renderizar el Sol
+                    let sun_translation = Vec3::new(0.0, 0.0, 0.0);
+                    let sun_model_matrix = create_model_matrix(
+                        sun_translation,
+                        scales[i] * 1.5,
+                        Vec3::new(0.0, 0.0, 0.0),
+                    );
+
+                    let sun_uniforms = Uniforms {
+                        model_matrix: sun_model_matrix,
+                        view_matrix,
+                        projection_matrix,
+                        viewport_matrix,
+                        time: elapsed_time as u32,
+                        noise: create_noise_for_planet(i),
+                    };
+
+                    render(&mut framebuffer, &sun_uniforms, &vertex_arrays, sun_shader);
+                } else {
+                    // Renderizar los demás planetas normalmente
+                    render(&mut framebuffer, &uniforms, &vertex_arrays, shaders[i]);
+                }
             }
         }
 
