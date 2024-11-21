@@ -776,13 +776,13 @@ fn handle_tie_fighter_input(
     }
 
     // Rotación con teclas hacia arriba/abajo (pitch)
-    if window.is_key_down(Key::T) {
+    if window.is_key_down(Key::W) {
         let right = nalgebra_glm::cross(&direction, &up).normalize();
         let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &right);
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
         *up = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(up)));
     }
-    if window.is_key_down(Key::G) {
+    if window.is_key_down(Key::S) {
         let right = nalgebra_glm::cross(&direction, &up).normalize();
         let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &right);
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
@@ -790,11 +790,11 @@ fn handle_tie_fighter_input(
     }
 
     // Rotación con teclas hacia los lados (yaw)
-    if window.is_key_down(Key::F) {
+    if window.is_key_down(Key::A) {
         let rotation_matrix = nalgebra_glm::rotation(rotation_speed, &up.normalize());
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
     }
-    if window.is_key_down(Key::H) {
+    if window.is_key_down(Key::D) {
         let rotation_matrix = nalgebra_glm::rotation(-rotation_speed, &up.normalize());
         *direction = nalgebra_glm::normalize(&(rotation_matrix.transform_vector(direction)));
     }
