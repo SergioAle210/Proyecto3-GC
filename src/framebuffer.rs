@@ -1,4 +1,4 @@
-use crate::color::Color;
+use crate::{color::Color, texture::Texture};
 
 pub struct Framebuffer {
     pub width: usize,
@@ -110,6 +110,22 @@ impl Framebuffer {
             if e2 < dy {
                 err += dx;
                 y0 += sy;
+            }
+        }
+    }
+
+    pub fn draw_skybox(&mut self, texture: &Texture) {
+        for y in 0..self.height {
+            for x in 0..self.width {
+                // Mapear las coordenadas del framebuffer a las coordenadas de la textura
+                let u = x as f32 / self.width as f32;
+                let v = y as f32 / self.height as f32;
+
+                // Obtener el color de la textura
+                let color = texture.sample(u, v);
+
+                // Dibujar el color en el buffer
+                self.buffer[y * self.width + x] = color;
             }
         }
     }

@@ -10,6 +10,7 @@ mod fragment;
 mod framebuffer;
 mod obj;
 mod shaders;
+mod texture;
 mod triangle;
 mod vertex;
 
@@ -18,13 +19,18 @@ use fastnoise_lite::{FastNoiseLite, FractalType, NoiseType};
 use framebuffer::Framebuffer;
 use image::{GenericImageView, RgbaImage};
 use obj::Obj;
+use once_cell::sync::Lazy;
 use shaders::{
     cellular_shader, cloud_shader, combined_shader, comet_shader, dalmata_shader, earth,
     fragment_shader, lava_shader, luna_shader, moving_circles_shader, neon_light_shader,
     neon_normal_map_shader, static_pattern_shader, sun_shader, vertex_shader,
 };
+use std::sync::{Arc, Mutex};
+use texture::Texture;
 use triangle::triangle;
 use vertex::Vertex;
+
+static FONDO: Lazy<Arc<Texture>> = Lazy::new(|| Arc::new(Texture::new("assets/images/Galaxy.jpg")));
 
 pub struct Uniforms {
     model_matrix: Mat4,
@@ -488,6 +494,8 @@ fn main() {
         );
 
         framebuffer.clear();
+
+        framebuffer.draw_skybox(&FONDO);
 
         let view_matrix = create_view_matrix(camera.eye, camera.center, camera.up);
         let projection_matrix =
