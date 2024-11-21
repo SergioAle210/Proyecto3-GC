@@ -414,16 +414,6 @@ fn main() {
 
         //handle_input(&window, &mut camera, &mut last_mouse_pos);
 
-        // Manejar los controles de la nave
-        handle_tie_fighter_input(
-            &window,
-            &mut tie_fighter_position,
-            &mut tie_fighter_direction,
-            &mut tie_fighter_up,
-            &mut camera,
-            &mut last_mouse_pos,
-        );
-
         // Verificar colisiones para la nave
         for (i, planet_position) in translations.iter().enumerate() {
             let planet_radius = scales[i] + 0.5; // Aumentar ligeramente el radio para mayor seguridad
@@ -442,6 +432,16 @@ fn main() {
         camera.eye = tie_fighter_position - tie_fighter_direction * 3.0 + tie_fighter_up * 2.0;
         camera.center = tie_fighter_position;
         camera.up = tie_fighter_up;
+
+        // Manejar los controles de la nave
+        handle_tie_fighter_input(
+            &window,
+            &mut tie_fighter_position,
+            &mut tie_fighter_direction,
+            &mut tie_fighter_up,
+            &mut camera,
+            &mut last_mouse_pos,
+        );
 
         framebuffer.clear();
 
@@ -709,7 +709,7 @@ fn handle_tie_fighter_input(
     let speed = 0.5; // Velocidad de la nave
     let rotation_speed = 0.05; // Velocidad de rotación
     let sensitivity = 0.005; // Sensibilidad del mouse
-    let zoom_sensitivity = 1.0; // Sensibilidad del zoom
+    let zoom_sensitivity = 0.1; // Sensibilidad del zoom
 
     // Movimiento adelante/atrás de la nave
     if window.is_key_down(Key::Up) {
