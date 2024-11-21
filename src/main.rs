@@ -387,7 +387,7 @@ fn main() {
 
     let mut current_camera_target = 0; // Índice del planeta seleccionado
 
-    let mut zoom_factor = 5.0; // Zoom inicial
+    let mut zoom_factor = 3.0; // Zoom inicial
 
     while window.is_open() {
         if window.is_key_down(Key::Escape) {
