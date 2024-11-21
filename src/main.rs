@@ -352,9 +352,17 @@ fn main() {
 
     let mut current_camera_target = 0; // Índice del planeta seleccionado
 
+    let mut zoom_factor = 5.0; // Zoom inicial
+
     while window.is_open() {
         if window.is_key_down(Key::Escape) {
             break;
+        }
+
+        if let Some((_, scroll_y)) = window.get_scroll_wheel() {
+            let zoom_sensitivity = 0.1; // Ajusta la sensibilidad
+            zoom_factor -= scroll_y as f32 * zoom_sensitivity;
+            zoom_factor = zoom_factor.clamp(2.0, 50.0); // Limitar el zoom
         }
 
         // Control de cámara con teclas numéricas
@@ -429,7 +437,8 @@ fn main() {
         }
 
         // Actualizar la posición y orientación de la cámara para seguir la nave
-        camera.eye = tie_fighter_position - tie_fighter_direction * 3.0 + tie_fighter_up * 2.0;
+        camera.eye =
+            tie_fighter_position - tie_fighter_direction * zoom_factor + tie_fighter_up * 2.0;
         camera.center = tie_fighter_position;
         camera.up = tie_fighter_up;
 
@@ -709,7 +718,7 @@ fn handle_tie_fighter_input(
     let speed = 0.5; // Velocidad de la nave
     let rotation_speed = 0.05; // Velocidad de rotación
     let sensitivity = 0.005; // Sensibilidad del mouse
-    let zoom_sensitivity = 0.1; // Sensibilidad del zoom
+    let zoom_sensitivity = 0.001; // Sensibilidad del zoom
 
     // Movimiento adelante/atrás de la nave
     if window.is_key_down(Key::Up) {
@@ -763,19 +772,5 @@ fn handle_tie_fighter_input(
 
         // Actualizar la última posición del mouse
         *last_mouse_pos = (mouse_x as f32, mouse_y as f32);
-    }
-
-    // Controlar el zoom con el scroll del mouse
-    if let Some((_, scroll_y)) = window.get_scroll_wheel() {
-        let direction_to_center = (camera.center - camera.eye).normalize();
-        camera.eye += direction_to_center * (scroll_y as f32 * zoom_sensitivity);
-
-        // Limitar la distancia mínima y máxima del zoom
-        let distance = nalgebra_glm::distance(&camera.eye, &camera.center);
-        if distance < 2.0 {
-            camera.eye = camera.center - direction_to_center * 2.0;
-        } else if distance > 100.0 {
-            camera.eye = camera.center - direction_to_center * 100.0;
-        }
     }
 }
